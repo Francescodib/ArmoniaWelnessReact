@@ -1,69 +1,185 @@
-# React + TypeScript + Vite
+# Armonia Wellness - Sistema di Gestione Prenotazioni
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+Un'applicazione web moderna e intuitiva per la gestione delle prenotazioni di un centro benessere, sviluppata con React, TypeScript e Tailwind CSS.
 
-Currently, two official plugins are available:
+## 🚀 Caratteristiche Principali
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Babel](https://babeljs.io/) for Fast Refresh
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/) for Fast Refresh
+### 🔐 Sistema di Autenticazione
+- Login simulato con credenziali admin/admin
+- Interfaccia protetta per lo staff del centro
+- Logout sicuro
 
-## Expanding the ESLint configuration
+### 📅 Gestione Prenotazioni
+- **Vista Giornaliera**: Visualizzazione dettagliata degli appuntamenti per giorno
+- **Vista Settimanale**: Panoramica settimanale con griglia oraria
+- **Vista Mensile**: Calendario mensile con indicatori visivi
 
-If you are developing a production application, we recommend updating the configuration to enable type-aware lint rules:
+### ✨ Funzionalità CRUD Complete
+- ✅ **Creazione**: Nuove prenotazioni con validazione dati
+- 📝 **Lettura**: Visualizzazione in tempo reale di tutte le prenotazioni
+- 🔄 **Aggiornamento**: Modifica appuntamenti esistenti
+- 🗑️ **Cancellazione**: Rimozione prenotazioni con conferma
 
-```js
-export default tseslint.config([
-  globalIgnores(['dist']),
-  {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
+### 🕒 Gestione Orari Intelligente
+- Orari di lavoro: 9:00-13:00 e 14:00-18:00
+- Lunedì-Venerdì: Orario completo
+- Sabato: Solo mattina (9:00-13:00)
+- Domenica: Centro chiuso
+- Pausa pranzo automatica dalle 13:00 alle 14:00
 
-      // Remove tseslint.configs.recommended and replace with this
-      ...tseslint.configs.recommendedTypeChecked,
-      // Alternatively, use this for stricter rules
-      ...tseslint.configs.strictTypeChecked,
-      // Optionally, add this for stylistic rules
-      ...tseslint.configs.stylisticTypeChecked,
+### 🚫 Prevenzione Sovrapposizioni
+- Controllo automatico della disponibilità
+- Validazione della durata dei trattamenti
+- Prevenzione di appuntamenti sovrapposti
+- Gestione intelligente degli slot temporali
 
-      // Other configs...
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+### 📱 Design Responsive
+- Interfaccia ottimizzata per dispositivi mobili
+- Layout adattivo per tablet e desktop
+- Navigazione touch-friendly
+
+## 🛠️ Tecnologie Utilizzate
+
+- **Frontend**: React 19 + TypeScript
+- **Styling**: Tailwind CSS 4
+- **Icone**: Lucide React
+- **Build Tool**: Vite
+- **Linting**: ESLint
+
+## 📦 Installazione
+
+1. **Clona il repository**
+   ```bash
+   git clone <repository-url>
+   cd ArmoniaWellness
+   ```
+
+2. **Installa le dipendenze**
+   ```bash
+   npm install
+   ```
+
+3. **Avvia l'ambiente di sviluppo**
+   ```bash
+   npm run dev
+   ```
+
+4. **Apri nel browser**
+   Naviga su `http://localhost:5173`
+
+## 🔑 Accesso
+
+- **Username**: `admin`
+- **Password**: `admin`
+
+## 📋 Struttura del Progetto
+
+```
+src/
+├── components/          # Componenti React
+│   ├── Logo.tsx        # Logo personalizzabile
+│   ├── Login.tsx       # Form di autenticazione
+│   ├── Navbar.tsx      # Barra di navigazione
+│   ├── Dashboard.tsx   # Dashboard principale
+│   ├── ViewSelector.tsx # Selettore vista (giorno/settimana/mese)
+│   ├── DateNavigator.tsx # Navigazione temporale
+│   ├── AppointmentForm.tsx # Form prenotazioni
+│   ├── DayView.tsx     # Vista giornaliera
+│   ├── WeekView.tsx    # Vista settimanale
+│   └── MonthView.tsx   # Vista mensile
+├── types/              # Definizioni TypeScript
+│   └── index.ts        # Interfacce e tipi
+├── App.tsx             # Componente principale
+├── App.css             # Stili personalizzati
+└── index.css           # Stili globali e Tailwind
 ```
 
-You can also install [eslint-plugin-react-x](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-x) and [eslint-plugin-react-dom](https://github.com/Rel1cx/eslint-react/tree/main/packages/plugins/eslint-plugin-react-dom) for React-specific lint rules:
+## 🎨 Personalizzazione
 
-```js
-// eslint.config.js
-import reactX from 'eslint-plugin-react-x'
-import reactDom from 'eslint-plugin-react-dom'
+### Colori
+L'applicazione utilizza una palette di colori personalizzata:
+- **Indigo**: Colore primario per bottoni e elementi principali
+- **Fuchsia**: Colore secondario per accenti
+- **Purple**: Colore per elementi terziari
 
-export default tseslint.config([
-  globalIgnores(['dist']),
+### Logo
+Il componente `Logo` accetta props per personalizzazione:
+- `variant`: 'color' | 'white'
+- `size`: 'sm' | 'md' | 'lg' | 'xl'
+
+## 📱 Utilizzo
+
+### 1. Accesso
+- Inserisci le credenziali admin/admin
+- Clicca su "Accedi"
+
+### 2. Navigazione
+- **Vista Giorno**: Visualizza gli appuntamenti di un singolo giorno
+- **Vista Settimana**: Panoramica settimanale con griglia oraria
+- **Vista Mese**: Calendario mensile con indicatori
+
+### 3. Gestione Prenotazioni
+- **Nuova**: Clicca su "+" o "Nuova Prenotazione"
+- **Modifica**: Clicca sull'icona di modifica
+- **Elimina**: Clicca sull'icona del cestino
+
+### 4. Navigazione Temporale
+- Usa le frecce per spostarti tra giorni/settimane/mesi
+- Clicca su "Oggi" per tornare alla data corrente
+
+## 🔧 Sviluppo
+
+### Script Disponibili
+- `npm run dev`: Avvia l'ambiente di sviluppo
+- `npm run build`: Compila per la produzione
+- `npm run preview`: Anteprima della build
+- `npm run lint`: Controllo del codice
+
+### Aggiungere Nuovi Trattamenti
+Modifica l'array `sampleTreatments` in `Dashboard.tsx`:
+
+```typescript
+const sampleTreatments: Treatment[] = [
   {
-    files: ['**/*.{ts,tsx}'],
-    extends: [
-      // Other configs...
-      // Enable lint rules for React
-      reactX.configs['recommended-typescript'],
-      // Enable lint rules for React DOM
-      reactDom.configs.recommended,
-    ],
-    languageOptions: {
-      parserOptions: {
-        project: ['./tsconfig.node.json', './tsconfig.app.json'],
-        tsconfigRootDir: import.meta.dirname,
-      },
-      // other options...
-    },
-  },
-])
+    id: '6',
+    name: 'Nuovo Trattamento',
+    duration: 75, // in minuti
+    price: 95,
+    category: 'massage'
+  }
+];
 ```
+
+## 🌟 Funzionalità Avanzate
+
+### Validazione Dati
+- Controllo formato email
+- Validazione campi obbligatori
+- Prevenzione sovrapposizioni orarie
+
+### Gestione Stato
+- Stato locale React per prenotazioni
+- Aggiornamento in tempo reale
+- Persistenza durante la sessione
+
+### Responsive Design
+- Breakpoint mobile-first
+- Layout adattivo per tutti i dispositivi
+- Navigazione ottimizzata per touch
+
+## 📄 Licenza
+
+Questo progetto è sviluppato per scopi educativi e dimostrativi.
+
+## 🤝 Contributi
+
+Per contribuire al progetto:
+1. Fork del repository
+2. Crea un branch per la feature
+3. Commit delle modifiche
+4. Push al branch
+5. Crea una Pull Request
+
+---
+
+**Armonia Wellness** - Trasforma la gestione delle prenotazioni in un'esperienza digitale elegante e efficiente.
