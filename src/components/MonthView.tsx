@@ -1,6 +1,7 @@
 import React from 'react';
-import { Plus, ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { Plus } from 'lucide-react';
 import type { Appointment } from '../types/index';
+import { capitalize } from '../utils/utils';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -14,8 +15,7 @@ const MonthView: React.FC<MonthViewProps> = ({
   currentDate,
   appointments,
   onAddAppointment,
-  onEditAppointment,
-  onMonthChange
+  onEditAppointment
 }) => {
   const getMonthDays = (date: Date) => {
     const year = date.getFullYear();
@@ -69,49 +69,18 @@ const MonthView: React.FC<MonthViewProps> = ({
     return date.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
   };
 
-  const navigateMonth = (direction: 'prev' | 'next') => {
-    const newDate = new Date(currentDate);
-    newDate.setMonth(currentDate.getMonth() + (direction === 'next' ? 1 : -1));
-    onMonthChange(newDate);
-  };
-
-  const goToToday = () => {
-    onMonthChange(new Date());
-  };
 
   return (
     <div className="space-y-4">
       {/* Header del mese */}
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between hidden lg:block">
         <div className="flex items-center gap-4">
-          <button
-            onClick={() => navigateMonth('prev')}
-            className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-          >
-            <ChevronLeft className="w-5 h-5" />
-          </button>
-
-          <div className="flex items-center gap-3">
-            <Calendar className="w-6 h-6 text-indigo-600" />
-            <h3 className="text-2xl font-semibold text-gray-900">
-              {getMonthName(currentDate)}
+      
+            <h3 className="text-lg font-semibold text-gray-900">
+              {capitalize(getMonthName(currentDate))}
             </h3>
-          </div>
 
-          <button
-            onClick={() => navigateMonth('next')}
-            className="p-2 text-gray-600 hover:text-indigo-600 hover:bg-gray-100 rounded-lg transition-colors duration-200"
-          >
-            <ChevronRight className="w-5 h-5" />
-          </button>
         </div>
-
-        <button
-          onClick={goToToday}
-          className="btn-outline text-sm px-4 py-2"
-        >
-          Oggi
-        </button>
       </div>
 
       {/* Griglia del calendario */}

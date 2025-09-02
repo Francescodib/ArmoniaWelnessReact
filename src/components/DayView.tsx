@@ -1,6 +1,7 @@
 import React from 'react';
 import { Plus, Edit, Trash2, Clock } from 'lucide-react';
 import type { Appointment } from '../types/index';
+import { capitalize } from '../utils/utils';
 
 interface DayViewProps {
   date: string;
@@ -63,13 +64,19 @@ const DayView: React.FC<DayViewProps> = ({
     });
   };
 
-  const canAddAppointment = (time: string) => {
+  const canAddAppointment = (time: string, treatmentDuration?: number) => {
     if (!isWorkingDay(date) || !isWorkingHour(time)) return false;
     if (isTimeSlotOccupied(time)) return false;
     
     // Verifica che non ci siano sovrapposizioni
     const [hour, minute] = time.split(':').map(Number);
     const timeMinutes = hour * 60 + minute;
+    
+    // Verifica che non finisca dopo l'orario lavorativo
+    const duration = treatmentDuration || 60; // Durata del trattamento o default 60 min
+    const endTimeMinutes = timeMinutes + duration;
+    const endHour = Math.floor(endTimeMinutes / 60);
+    if (endHour >= 18) return false; // Non può finire dopo le 18:00
     
     return !appointments.some(apt => {
       const aptStart = apt.startTime.split(':').map(Number);
@@ -102,7 +109,7 @@ const DayView: React.FC<DayViewProps> = ({
     <div className="space-y-4">
       <div className="flex items-center justify-between">
         <h3 className="text-lg font-semibold text-gray-900">
-          {new Date(date).toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' })}
+          {capitalize(new Date(date).toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }))}
         </h3>
         <div className="text-sm text-gray-500">
           Orario: 9:00 - 13:00, 14:00 - 18:00
@@ -183,7 +190,7 @@ const DayView: React.FC<DayViewProps> = ({
                           </button>
                         ) : (
                           <span className="text-gray-400 text-sm">
-                            Slot occupato
+                            {time >= '17:00' ? 'Fine orario lavorativo' : 'Slot occupato'}
                           </span>
                         )}
                       </div>

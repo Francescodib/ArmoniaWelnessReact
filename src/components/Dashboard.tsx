@@ -8,7 +8,7 @@ import WeekView from './WeekView';
 import MonthView from './MonthView';
 import AppointmentForm from './AppointmentForm';
 
-// Dati di esempio per i trattamenti
+// Sample treatments data
 const sampleTreatments: Treatment[] = [
   {
     id: '1',
@@ -58,7 +58,6 @@ const sampleAppointments: Appointment[] = [
     treatment: sampleTreatments[0],
     date: new Date().toISOString().split('T')[0],
     startTime: '10:00',
-    endTime: '11:00',
     notes: 'Cliente preferisce olio essenziale alla lavanda',
     status: 'confirmed',
     createdAt: new Date(),
@@ -73,7 +72,35 @@ const sampleAppointments: Appointment[] = [
     treatment: sampleTreatments[2],
     date: new Date().toISOString().split('T')[0],
     startTime: '14:30',
-    endTime: '15:00',
+    notes: '',
+    status: 'confirmed',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '3',
+    clientName: 'Giuseppe Bianchi',
+    clientPhone: '+39 987 654 321',
+    clientEmail: 'giuseppe.bianchi@email.com',
+    treatmentId: '3',
+    treatment: sampleTreatments[3],
+    // add 1 day to the current date
+    date: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0],
+    startTime: '14:30',
+    notes: '',
+    status: 'confirmed',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '4',
+    clientName: 'Francesco Verdi',
+    clientPhone: '+39 234 567 890',
+    clientEmail: 'francesco.verdi@email.com',
+    treatmentId: '5',
+    treatment: sampleTreatments[2],
+    date: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0],
+    startTime: '11:30',
     notes: '',
     status: 'confirmed',
     createdAt: new Date(),
@@ -95,6 +122,49 @@ const Dashboard: React.FC = () => {
   const todayAppointments = appointments.filter(apt => apt.date === new Date().toISOString().split('T')[0]);
   const totalAppointments = appointments.length;
   const confirmedAppointments = appointments.filter(apt => apt.status === 'confirmed').length;
+  
+  // Calcolo incasso in base alla vista corrente
+  const getCurrentPeriodIncome = () => {
+    const today = new Date().toISOString().split('T')[0];
+    
+    if (currentView === 'day') {
+      // Incasso giornaliero
+      return appointments
+        .filter(apt => apt.date === today)
+        .reduce((total, apt) => total + apt.treatment.price, 0);
+    } else if (currentView === 'week') {
+      // Incasso settimanale
+      const weekStart = getWeekStartDate(currentDate);
+      const weekEnd = new Date(weekStart);
+      weekEnd.setDate(weekStart.getDate() + 6);
+      
+      return appointments
+        .filter(apt => {
+          const aptDate = new Date(apt.date);
+          return aptDate >= weekStart && aptDate <= weekEnd;
+        })
+        .reduce((total, apt) => total + apt.treatment.price, 0);
+    } else {
+      // Incasso mensile
+      const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
+      const monthEnd = new Date(currentDate.getFullYear(), currentDate.getMonth() + 1, 0);
+      
+      return appointments
+        .filter(apt => {
+          const aptDate = new Date(apt.date);
+          return aptDate >= monthStart && aptDate <= monthEnd;
+        })
+        .reduce((total, apt) => total + apt.treatment.price, 0);
+    }
+  };
+  
+  const getWeekStartDate = (date: Date) => {
+    const day = date.getDay();
+    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Lunedì = 1
+    return new Date(date.setDate(diff));
+  };
+
+  const currentPeriodIncome = getCurrentPeriodIncome();
 
   const handleAddAppointment = (date: string, time: string) => {
     setSelectedDate(date);
@@ -116,7 +186,7 @@ const Dashboard: React.FC = () => {
     }
   };
 
-  const handleSubmitAppointment = (appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt'>) => {
+  const handleSubmitAppointment = (appointmentData: Omit<Appointment, 'id' | 'createdAt' | 'updatedAt' | 'endTime'>) => {
     if (editingAppointment) {
       // Modifica prenotazione esistente
       setAppointments(prev => prev.map(apt => 
@@ -134,12 +204,6 @@ const Dashboard: React.FC = () => {
       };
       setAppointments(prev => [...prev, newAppointment]);
     }
-  };
-
-  const getWeekStartDate = (date: Date) => {
-    const day = date.getDay();
-    const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Lunedì = 1
-    return new Date(date.setDate(diff));
   };
 
   return (
@@ -218,9 +282,12 @@ const Dashboard: React.FC = () => {
                 <TrendingUp className="w-6 h-6 text-purple-600" />
               </div>
               <div className="ml-4">
-                <p className="text-sm font-medium text-gray-600">Efficienza</p>
+                <p className="text-sm font-medium text-gray-600">
+                  {currentView === 'day' ? 'Incasso Oggi' : 
+                   currentView === 'week' ? 'Incasso Settimana' : 'Incasso Mese'}
+                </p>
                 <p className="text-2xl font-semibold text-gray-900">
-                  {totalAppointments > 0 ? Math.round((confirmedAppointments / totalAppointments) * 100) : 0}%
+                  €{currentPeriodIncome}
                 </p>
               </div>
             </div>
@@ -245,7 +312,7 @@ const Dashboard: React.FC = () => {
         {currentView === 'day' && (
           <DayView
             date={currentDate.toISOString().split('T')[0]}
-            appointments={appointments}
+            appointments={appointments.filter(apt => apt.date === currentDate.toISOString().split('T')[0])}
             onAddAppointment={handleAddAppointment}
             onEditAppointment={handleEditAppointment}
             onDeleteAppointment={handleDeleteAppointment}
@@ -282,6 +349,7 @@ const Dashboard: React.FC = () => {
         treatments={treatments}
         selectedDate={selectedDate}
         selectedTime={selectedTime}
+        existingAppointments={appointments}
       />
     </div>
   );

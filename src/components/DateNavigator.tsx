@@ -1,5 +1,6 @@
-import React from 'react';
+
 import { ChevronLeft, ChevronRight, Calendar } from 'lucide-react';
+import { capitalize } from '../utils/utils';
 
 interface DateNavigatorProps {
   currentDate: Date;
@@ -63,7 +64,7 @@ const DateNavigator: React.FC<DateNavigatorProps> = ({
       <div className="flex items-center gap-3">
         <Calendar className="w-5 h-5 text-indigo-600" />
         <h2 className="text-xl font-semibold text-gray-900">
-          {formatDate(currentDate, viewMode)}
+          {capitalize(formatDate(currentDate, viewMode))}
         </h2>
       </div>
 

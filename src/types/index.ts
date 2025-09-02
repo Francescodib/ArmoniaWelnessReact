@@ -15,7 +15,7 @@ export interface Appointment {
   treatment: Treatment;
   date: string; // YYYY-MM-DD
   startTime: string; // HH:MM
-  endTime: string; // HH:MM
+  endTime?: string; // HH:MM - opzionale, calcolato dinamicamente
   notes?: string;
   status: 'confirmed' | 'pending' | 'cancelled';
   createdAt: Date;
