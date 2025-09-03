@@ -20,12 +20,14 @@ Un'applicazione web moderna e intuitiva per la gestione delle prenotazioni di un
 - 🔄 **Aggiornamento**: Modifica appuntamenti esistenti
 - 🗑️ **Cancellazione**: Rimozione prenotazioni con conferma
 
-### 🕒 Gestione Orari Intelligente
-- Orari di lavoro: 9:00-13:00 e 14:00-18:00
-- Lunedì-Venerdì: Orario completo
-- Sabato: Solo mattina (9:00-13:00)
-- Domenica: Centro chiuso
-- Pausa pranzo automatica dalle 13:00 alle 14:00
+### 🕒 Gestione Orari Intelligente e Configurabile
+- **Sistema centralizzato** per la gestione degli orari lavorativi
+- **Configurazione flessibile** tramite file di impostazioni
+- **Orari predefiniti**: 9:00-13:00 e 14:00-18:00
+- **Giorni lavorativi**: Lunedì-Venerdì (completo), Sabato (mattina), Domenica (chiuso)
+- **Pausa pranzo automatica** dalle 13:00 alle 14:00
+- **Slot orari configurabili** (predefinito: 30 minuti)
+- **Hook personalizzato** `useWorkingHours` per gestione elegante
 
 ### 🚫 Prevenzione Sovrapposizioni
 - Controllo automatico della disponibilità
@@ -149,6 +151,25 @@ const sampleTreatments: Treatment[] = [
   }
 ];
 ```
+
+### Configurazione Orari Lavorativi
+Modifica `src/config/settings.ts` per personalizzare orari e impostazioni:
+
+```typescript
+export const CENTER_SETTINGS = {
+  // ... altre impostazioni
+  defaultWorkingHours: {
+    monday: { start: '08:00', end: '12:00', afternoonStart: '13:00', afternoonEnd: '19:00' },
+    // ... altri giorni
+  },
+  booking: {
+    slotDuration: 15, // Slot di 15 minuti
+    // ... altre impostazioni
+  }
+};
+```
+
+Per maggiori dettagli, consulta la [documentazione completa](docs/WORKING_HOURS.md).
 
 ## 🌟 Funzionalità Avanzate
 

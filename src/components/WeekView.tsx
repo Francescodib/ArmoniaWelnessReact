@@ -1,11 +1,20 @@
 import React from 'react';
 import { Plus, Edit, Trash2, Clock } from 'lucide-react';
-import type { Appointment } from '../types/index';
+import type { Appointment, Treatment } from '../types/index';
+import StatusBadge from './StatusBadge';
+import { formatDateToISOString } from '../utils/utils';
+import { 
+  isWorkingDay, 
+  isWorkingHour, 
+  generateTimeSlots, 
+  getWorkingHoursDescription 
+} from '../config/workingHours';
 
 interface WeekViewProps {
   startDate: Date;
   appointments: Appointment[];
-  onAddAppointment: (date: string, time: string) => void;
+  treatments: Treatment[];
+  onAddAppointment: (date: string, time: string, maxDuration?: number) => void;
   onEditAppointment: (appointment: Appointment) => void;
   onDeleteAppointment: (id: string) => void;
 }
@@ -13,21 +22,18 @@ interface WeekViewProps {
 const WeekView: React.FC<WeekViewProps> = ({
   startDate,
   appointments,
+  treatments,
   onAddAppointment,
   onEditAppointment,
   onDeleteAppointment
 }) => {
-  const timeSlots = [];
-  const startHour = 9;
-  const endHour = 18;
-  
-  // Genera slot orari dalle 9 alle 18
-  for (let hour = startHour; hour < endHour; hour++) {
-    for (let minute = 0; minute < 60; minute += 30) {
-      const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-      timeSlots.push(time);
-    }
-  }
+  // Helper function per ottenere il trattamento da treatmentId
+  const getTreatmentById = (treatmentId: string): Treatment | undefined => {
+    return treatments.find(t => t.id === treatmentId);
+  };
+
+  // Genera slot orari basati sulla configurazione (usa il primo giorno della settimana come riferimento)
+  const timeSlots = generateTimeSlots(startDate);
 
   const getWeekDays = (start: Date) => {
     const days = [];
@@ -41,17 +47,7 @@ const WeekView: React.FC<WeekViewProps> = ({
 
   const weekDays = getWeekDays(startDate);
 
-  const isWorkingDay = (date: Date) => {
-    const day = date.getDay();
-    return day >= 1 && day <= 6; // Lunedì = 1, Sabato = 6
-  };
-
-  const isWorkingHour = (time: string) => {
-    const [hour] = time.split(':').map(Number);
-    if (hour < 9 || hour >= 18) return false;
-    if (hour === 13) return false; // Pausa pranzo
-    return true;
-  };
+  // Le funzioni isWorkingDay e isWorkingHour sono ora importate dalla configurazione
 
   const getAppointmentsForDayAndTime = (date: string, time: string) => {
     return appointments.filter(apt => apt.date === date && apt.startTime === time);
@@ -69,7 +65,8 @@ const WeekView: React.FC<WeekViewProps> = ({
   const getAppointmentEndTime = (appointment: Appointment) => {
     const [startHour, startMinute] = appointment.startTime.split(':').map(Number);
     const startMinutes = startHour * 60 + startMinute;
-    const endMinutes = startMinutes + appointment.treatment.duration;
+    const treatment = getTreatmentById(appointment.treatmentId);
+    const endMinutes = startMinutes + (treatment?.duration || 0);
     const endHour = Math.floor(endMinutes / 60);
     const endMinute = endMinutes % 60;
     return `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
@@ -86,7 +83,7 @@ const WeekView: React.FC<WeekViewProps> = ({
 
   const canAddAppointment = (date: string, time: string) => {
     const dateObj = new Date(date);
-    if (!isWorkingDay(dateObj) || !isWorkingHour(time)) return false;
+    if (!isWorkingDay(dateObj) || !isWorkingHour(time, dateObj)) return false;
     if (isTimeSlotOccupied(date, time)) return false;
     
     // Verifica che non ci siano sovrapposizioni
@@ -97,7 +94,8 @@ const WeekView: React.FC<WeekViewProps> = ({
       if (apt.date !== date) return false;
       const aptStart = apt.startTime.split(':').map(Number);
       const aptStartMinutes = aptStart[0] * 60 + aptStart[1];
-      const aptEndMinutes = aptStartMinutes + apt.treatment.duration;
+      const treatment = getTreatmentById(apt.treatmentId);
+      const aptEndMinutes = aptStartMinutes + (treatment?.duration || 0);
       return timeMinutes >= aptStartMinutes && timeMinutes < aptEndMinutes;
     });
   };
@@ -109,7 +107,7 @@ const WeekView: React.FC<WeekViewProps> = ({
           Settimana dal {startDate.toLocaleDateString('it-IT', { day: 'numeric', month: 'long' })} al {(new Date(startDate.getTime() + 6 * 24 * 60 * 60 * 1000)).toLocaleDateString('it-IT', { day: 'numeric', month: 'long', year: 'numeric' })}
         </h3>
         <div className="text-sm text-gray-500">
-          Orario: 9:00 - 13:00, 14:00 - 18:00
+          {getWorkingHoursDescription(startDate)}
         </div>
       </div>
 
@@ -150,7 +148,7 @@ const WeekView: React.FC<WeekViewProps> = ({
 
                 {/* Colonne dei giorni */}
                 {weekDays.map((day) => {
-                  const dateStr = day.toISOString().split('T')[0];
+                  const dateStr = formatDateToISOString(day);
                   const dayAppointments = getAppointmentsForDayAndTime(dateStr, time);
                   const isOccupied = isTimeSlotOccupied(dateStr, time);
                   const canAdd = canAddAppointment(dateStr, time);
@@ -187,9 +185,10 @@ const WeekView: React.FC<WeekViewProps> = ({
                               <div className="font-medium text-indigo-900 text-sm">
                                 {appointment.clientName}
                               </div>
-                              <div className="text-xs text-indigo-700">
-                                {appointment.treatment.name}
-                              </div>
+                                                              <div className="text-xs text-indigo-700">
+                                  {getTreatmentById(appointment.treatmentId)?.name}
+                                </div>
+                                <StatusBadge status={appointment.status} size="sm" showIcon={false} />
                               <div className="flex gap-1 mt-1">
                                 <button
                                   onClick={() => onEditAppointment(appointment)}

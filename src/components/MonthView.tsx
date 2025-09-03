@@ -1,12 +1,15 @@
 import React from 'react';
 import { Plus } from 'lucide-react';
-import type { Appointment } from '../types/index';
-import { capitalize } from '../utils/utils';
+import type { Appointment, Treatment } from '../types/index';
+import { capitalize, formatDateToISOString } from '../utils/utils';
+import StatusBadge from './StatusBadge';
+import { isWorkingDay } from '../config/workingHours';
 
 interface MonthViewProps {
   currentDate: Date;
   appointments: Appointment[];
-  onAddAppointment: (date: string, time: string) => void;
+  treatments: Treatment[];
+  onAddAppointment: (date: string, time: string, maxDuration?: number) => void;
   onEditAppointment: (appointment: Appointment) => void;
   onMonthChange: (date: Date) => void;
 }
@@ -14,9 +17,15 @@ interface MonthViewProps {
 const MonthView: React.FC<MonthViewProps> = ({
   currentDate,
   appointments,
+  treatments,
   onAddAppointment,
   onEditAppointment
 }) => {
+  // Helper function per ottenere il trattamento da treatmentId
+  const getTreatmentById = (treatmentId: string): Treatment | undefined => {
+    return treatments.find(t => t.id === treatmentId);
+  };
+
   const getMonthDays = (date: Date) => {
     const year = date.getFullYear();
     const month = date.getMonth();
@@ -43,10 +52,7 @@ const MonthView: React.FC<MonthViewProps> = ({
 
   const monthDays = getMonthDays(currentDate);
 
-  const isWorkingDay = (date: Date) => {
-    const day = date.getDay();
-    return day >= 1 && day <= 6; // Lunedì = 1, Sabato = 6
-  };
+  // La funzione isWorkingDay è ora importata dalla configurazione
 
   const isCurrentMonth = (date: Date) => {
     return date.getMonth() === currentDate.getMonth() && date.getFullYear() === currentDate.getFullYear();
@@ -97,7 +103,7 @@ const MonthView: React.FC<MonthViewProps> = ({
         {/* Griglia dei giorni */}
         <div className="grid grid-cols-7 divide-x divide-y divide-gray-200">
           {monthDays.map((day) => {
-            const dateStr = day.toISOString().split('T')[0];
+            const dateStr = formatDateToISOString(day);
             const dayAppointments = getAppointmentsForDay(dateStr);
             const isCurrentMonthDay = isCurrentMonth(day);
             const isTodayDay = isToday(day);
@@ -145,9 +151,10 @@ const MonthView: React.FC<MonthViewProps> = ({
                       <div className="text-xs font-medium text-indigo-900 truncate">
                         {appointment.clientName}
                       </div>
-                      <div className="text-xs text-indigo-700">
-                        {appointment.startTime} • {appointment.treatment.name}
-                      </div>
+                                              <div className="text-xs text-indigo-700">
+                          {appointment.startTime} • {getTreatmentById(appointment.treatmentId)?.name}
+                        </div>
+                        <StatusBadge status={appointment.status} size="sm" showIcon={false} />
                     </div>
                   ))}
                   

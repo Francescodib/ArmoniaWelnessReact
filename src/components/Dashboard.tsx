@@ -7,6 +7,7 @@ import DayView from './DayView';
 import WeekView from './WeekView';
 import MonthView from './MonthView';
 import AppointmentForm from './AppointmentForm';
+import { formatDateToISOString } from '../utils/utils';
 
 // Sample treatments data
 const sampleTreatments: Treatment[] = [
@@ -55,8 +56,7 @@ const sampleAppointments: Appointment[] = [
     clientPhone: '+39 123 456 789',
     clientEmail: 'maria.rossi@email.com',
     treatmentId: '1',
-    treatment: sampleTreatments[0],
-    date: new Date().toISOString().split('T')[0],
+    date: formatDateToISOString(new Date()),
     startTime: '10:00',
     notes: 'Cliente preferisce olio essenziale alla lavanda',
     status: 'confirmed',
@@ -68,9 +68,8 @@ const sampleAppointments: Appointment[] = [
     clientName: 'Giuseppe Bianchi',
     clientPhone: '+39 987 654 321',
     clientEmail: 'giuseppe.bianchi@email.com',
-    treatmentId: '3',
-    treatment: sampleTreatments[2],
-    date: new Date().toISOString().split('T')[0],
+    treatmentId: '2',
+    date: formatDateToISOString(new Date()),
     startTime: '14:30',
     notes: '',
     status: 'confirmed',
@@ -83,12 +82,10 @@ const sampleAppointments: Appointment[] = [
     clientPhone: '+39 987 654 321',
     clientEmail: 'giuseppe.bianchi@email.com',
     treatmentId: '3',
-    treatment: sampleTreatments[3],
-    // add 1 day to the current date
-    date: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0],
+    date: formatDateToISOString(new Date(new Date().setDate(new Date().getDate() + 1))),
     startTime: '14:30',
     notes: '',
-    status: 'confirmed',
+    status: 'pending',
     createdAt: new Date(),
     updatedAt: new Date()
   },
@@ -97,12 +94,24 @@ const sampleAppointments: Appointment[] = [
     clientName: 'Francesco Verdi',
     clientPhone: '+39 234 567 890',
     clientEmail: 'francesco.verdi@email.com',
-    treatmentId: '5',
-    treatment: sampleTreatments[2],
-    date: new Date(new Date().setDate(new Date().getDate() + 1)).toISOString().split('T')[0],
+    treatmentId: '4',
+    date: formatDateToISOString(new Date(new Date().setDate(new Date().getDate() + 1))),
     startTime: '11:30',
     notes: '',
     status: 'confirmed',
+    createdAt: new Date(),
+    updatedAt: new Date()
+  },
+  {
+    id: '5',
+    clientName: 'Anna Neri',
+    clientPhone: '+39 345 678 901',
+    clientEmail: 'anna.neri@email.com',
+    treatmentId: '5',
+    date: formatDateToISOString(new Date(new Date().setDate(new Date().getDate() + 2))),
+    startTime: '15:00',
+    notes: 'Prima volta, cliente timida',
+    status: 'pending',
     createdAt: new Date(),
     updatedAt: new Date()
   }
@@ -117,21 +126,31 @@ const Dashboard: React.FC = () => {
   const [editingAppointment, setEditingAppointment] = useState<Appointment | undefined>();
   const [selectedDate, setSelectedDate] = useState<string>('');
   const [selectedTime, setSelectedTime] = useState<string>('');
+  const [maxDuration, setMaxDuration] = useState<number | undefined>(undefined);
+
+  // Helper function per ottenere il trattamento da treatmentId
+  const getTreatmentById = (treatmentId: string): Treatment | undefined => {
+    return treatments.find(t => t.id === treatmentId);
+  };
 
   // Statistiche
-  const todayAppointments = appointments.filter(apt => apt.date === new Date().toISOString().split('T')[0]);
+  const todayAppointments = appointments.filter(apt => apt.date === formatDateToISOString(new Date()));
   const totalAppointments = appointments.length;
   const confirmedAppointments = appointments.filter(apt => apt.status === 'confirmed').length;
+  const pendingAppointments = appointments.filter(apt => apt.status === 'pending').length;
   
   // Calcolo incasso in base alla vista corrente
   const getCurrentPeriodIncome = () => {
-    const today = new Date().toISOString().split('T')[0];
+    const today = formatDateToISOString(new Date());
     
     if (currentView === 'day') {
-      // Incasso giornaliero
+      // Incasso giornaliero (solo appuntamenti confermati)
       return appointments
-        .filter(apt => apt.date === today)
-        .reduce((total, apt) => total + apt.treatment.price, 0);
+        .filter(apt => apt.date === today && apt.status === 'confirmed')
+        .reduce((total, apt) => {
+          const treatment = getTreatmentById(apt.treatmentId);
+          return total + (treatment?.price || 0);
+        }, 0);
     } else if (currentView === 'week') {
       // Incasso settimanale
       const weekStart = getWeekStartDate(currentDate);
@@ -141,9 +160,12 @@ const Dashboard: React.FC = () => {
       return appointments
         .filter(apt => {
           const aptDate = new Date(apt.date);
-          return aptDate >= weekStart && aptDate <= weekEnd;
+          return aptDate >= weekStart && aptDate <= weekEnd && apt.status === 'confirmed';
         })
-        .reduce((total, apt) => total + apt.treatment.price, 0);
+        .reduce((total, apt) => {
+          const treatment = getTreatmentById(apt.treatmentId);
+          return total + (treatment?.price || 0);
+        }, 0);
     } else {
       // Incasso mensile
       const monthStart = new Date(currentDate.getFullYear(), currentDate.getMonth(), 1);
@@ -152,25 +174,32 @@ const Dashboard: React.FC = () => {
       return appointments
         .filter(apt => {
           const aptDate = new Date(apt.date);
-          return aptDate >= monthStart && aptDate <= monthEnd;
+          return aptDate >= monthStart && aptDate <= monthEnd && apt.status === 'confirmed';
         })
-        .reduce((total, apt) => total + apt.treatment.price, 0);
+        .reduce((total, apt) => {
+          const treatment = getTreatmentById(apt.treatmentId);
+          return total + (treatment?.price || 0);
+        }, 0);
     }
   };
   
   const getWeekStartDate = (date: Date) => {
     const day = date.getDay();
     const diff = date.getDate() - day + (day === 0 ? -6 : 1); // Lunedì = 1
-    return new Date(date.setDate(diff));
+    const result = new Date(date);
+    result.setDate(diff);
+    return result;
   };
 
   const currentPeriodIncome = getCurrentPeriodIncome();
 
-  const handleAddAppointment = (date: string, time: string) => {
+  const handleAddAppointment = (date: string, time: string, maxDuration?: number) => {
     setSelectedDate(date);
     setSelectedTime(time);
     setEditingAppointment(undefined);
     setIsFormOpen(true);
+    // Passa la durata massima al form
+    setMaxDuration(maxDuration);
   };
 
   const handleEditAppointment = (appointment: Appointment) => {
@@ -203,6 +232,14 @@ const Dashboard: React.FC = () => {
         updatedAt: new Date()
       };
       setAppointments(prev => [...prev, newAppointment]);
+    }
+  };
+
+  // Gestisce il cambio di vista e resetta la data a oggi quando si passa alla vista giorno
+  const handleViewChange = (view: ViewMode) => {
+    setCurrentView(view);
+    if (view === 'day') {
+      setCurrentDate(new Date());
     }
   };
 
@@ -239,7 +276,7 @@ const Dashboard: React.FC = () => {
 
       {/* Statistiche */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 md:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-5 gap-6">
           <div className="card">
             <div className="flex items-center">
               <div className="p-2 bg-indigo-100 rounded-lg">
@@ -278,13 +315,27 @@ const Dashboard: React.FC = () => {
 
           <div className="card">
             <div className="flex items-center">
+              <div className="p-2 bg-yellow-100 rounded-lg">
+                <Clock className="w-6 h-6 text-yellow-600" />
+              </div>
+              <div className="ml-4">
+                <p className="text-sm font-medium text-gray-600">In Attesa</p>
+                <p className="text-2xl font-semibold text-gray-900">{pendingAppointments}</p>
+              </div>
+            </div>
+          </div>
+
+
+
+          <div className="card">
+            <div className="flex items-center">
               <div className="p-2 bg-purple-100 rounded-lg">
                 <TrendingUp className="w-6 h-6 text-purple-600" />
               </div>
               <div className="ml-4">
                 <p className="text-sm font-medium text-gray-600">
-                  {currentView === 'day' ? 'Incasso Oggi' : 
-                   currentView === 'week' ? 'Incasso Settimana' : 'Incasso Mese'}
+                  {currentView === 'day' ? 'Fatturato Oggi' : 
+                   currentView === 'week' ? 'Fatturato Settimana' : 'Fatturato Mese'}
                 </p>
                 <p className="text-2xl font-semibold text-gray-900">
                   €{currentPeriodIncome}
@@ -298,7 +349,7 @@ const Dashboard: React.FC = () => {
       {/* Controlli di navigazione */}
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
         <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-          <ViewSelector currentView={currentView} onViewChange={setCurrentView} />
+          <ViewSelector currentView={currentView} onViewChange={handleViewChange} />
           <DateNavigator 
             currentDate={currentDate} 
             onDateChange={setCurrentDate} 
@@ -311,8 +362,9 @@ const Dashboard: React.FC = () => {
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pb-8">
         {currentView === 'day' && (
           <DayView
-            date={currentDate.toISOString().split('T')[0]}
-            appointments={appointments.filter(apt => apt.date === currentDate.toISOString().split('T')[0])}
+            date={formatDateToISOString(currentDate)}
+            appointments={appointments.filter(apt => apt.date === formatDateToISOString(currentDate))}
+            treatments={treatments}
             onAddAppointment={handleAddAppointment}
             onEditAppointment={handleEditAppointment}
             onDeleteAppointment={handleDeleteAppointment}
@@ -323,6 +375,7 @@ const Dashboard: React.FC = () => {
           <WeekView
             startDate={getWeekStartDate(currentDate)}
             appointments={appointments}
+            treatments={treatments}
             onAddAppointment={handleAddAppointment}
             onEditAppointment={handleEditAppointment}
             onDeleteAppointment={handleDeleteAppointment}
@@ -333,6 +386,7 @@ const Dashboard: React.FC = () => {
           <MonthView
             currentDate={currentDate}
             appointments={appointments}
+            treatments={treatments}
             onAddAppointment={handleAddAppointment}
             onEditAppointment={handleEditAppointment}
             onMonthChange={setCurrentDate}
@@ -350,6 +404,7 @@ const Dashboard: React.FC = () => {
         selectedDate={selectedDate}
         selectedTime={selectedTime}
         existingAppointments={appointments}
+        maxDuration={maxDuration}
       />
     </div>
   );

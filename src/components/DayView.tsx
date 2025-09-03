@@ -1,12 +1,23 @@
 import React from 'react';
 import { Plus, Edit, Trash2, Clock } from 'lucide-react';
-import type { Appointment } from '../types/index';
+import type { Appointment, Treatment } from '../types/index';
 import { capitalize } from '../utils/utils';
+import StatusBadge from './StatusBadge';
+import { 
+  isWorkingDay, 
+  isWorkingHour, 
+  generateTimeSlots, 
+  isLunchBreak, 
+  getWorkingHoursDescription,
+  getWorkingHoursForDay,
+  isTimeSlotAvailableForDuration
+} from '../config/workingHours';
 
 interface DayViewProps {
   date: string;
   appointments: Appointment[];
-  onAddAppointment: (date: string, time: string) => void;
+  treatments: Treatment[];
+  onAddAppointment: (date: string, time: string, maxDuration?: number) => void;
   onEditAppointment: (appointment: Appointment) => void;
   onDeleteAppointment: (id: string) => void;
 }
@@ -14,34 +25,18 @@ interface DayViewProps {
 const DayView: React.FC<DayViewProps> = ({
   date,
   appointments,
+  treatments,
   onAddAppointment,
   onEditAppointment,
   onDeleteAppointment
 }) => {
-  const timeSlots = [];
-  const startHour = 9;
-  const endHour = 18;
-  
-  // Genera slot orari dalle 9 alle 18
-  for (let hour = startHour; hour < endHour; hour++) {
-    for (let minute = 0; minute < 60; minute += 30) {
-      const time = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-      timeSlots.push(time);
-    }
-  }
-
-  const isWorkingDay = (dateStr: string) => {
-    const date = new Date(dateStr);
-    const day = date.getDay();
-    return day >= 1 && day <= 6; // Lunedì = 1, Sabato = 6
+  // Helper function per ottenere il trattamento da treatmentId
+  const getTreatmentById = (treatmentId: string): Treatment | undefined => {
+    return treatments.find(t => t.id === treatmentId);
   };
 
-  const isWorkingHour = (time: string) => {
-    const [hour] = time.split(':').map(Number);
-    if (hour < 9 || hour >= 18) return false;
-    if (hour === 13) return false; // Pausa pranzo
-    return true;
-  };
+  // Genera slot orari basati sulla configurazione
+  const timeSlots = generateTimeSlots(new Date(date));
 
   const getAppointmentAtTime = (time: string) => {
     return appointments.find(apt => apt.startTime === time);
@@ -50,7 +45,8 @@ const DayView: React.FC<DayViewProps> = ({
   const getAppointmentEndTime = (appointment: Appointment) => {
     const [startHour, startMinute] = appointment.startTime.split(':').map(Number);
     const startMinutes = startHour * 60 + startMinute;
-    const endMinutes = startMinutes + appointment.treatment.duration;
+    const treatment = getTreatmentById(appointment.treatmentId);
+    const endMinutes = startMinutes + (treatment?.duration || 0);
     const endHour = Math.floor(endMinutes / 60);
     const endMinute = endMinutes % 60;
     return `${endHour.toString().padStart(2, '0')}:${endMinute.toString().padStart(2, '0')}`;
@@ -65,7 +61,7 @@ const DayView: React.FC<DayViewProps> = ({
   };
 
   const canAddAppointment = (time: string, treatmentDuration?: number) => {
-    if (!isWorkingDay(date) || !isWorkingHour(time)) return false;
+    if (!isWorkingDay(new Date(date)) || !isWorkingHour(time, new Date(date))) return false;
     if (isTimeSlotOccupied(time)) return false;
     
     // Verifica che non ci siano sovrapposizioni
@@ -75,13 +71,20 @@ const DayView: React.FC<DayViewProps> = ({
     // Verifica che non finisca dopo l'orario lavorativo
     const duration = treatmentDuration || 60; // Durata del trattamento o default 60 min
     const endTimeMinutes = timeMinutes + duration;
-    const endHour = Math.floor(endTimeMinutes / 60);
-    if (endHour >= 18) return false; // Non può finire dopo le 18:00
+    
+    // Verifica che non finisca dopo l'orario lavorativo del giorno
+    const workingHours = getWorkingHoursForDay(new Date(date));
+    const [endHourLimit, endMinuteLimit] = workingHours.afternoonEnd.split(':').map(Number);
+    const endLimitMinutes = endHourLimit * 60 + endMinuteLimit;
+    
+    // Permette di prenotare se finisce esattamente all'orario di chiusura o prima
+    if (endTimeMinutes > endLimitMinutes) return false;
     
     return !appointments.some(apt => {
       const aptStart = apt.startTime.split(':').map(Number);
       const aptStartMinutes = aptStart[0] * 60 + aptStart[1];
-      const aptEndMinutes = aptStartMinutes + apt.treatment.duration;
+      const treatment = getTreatmentById(apt.treatmentId);
+      const aptEndMinutes = aptStartMinutes + (treatment?.duration || 0);
       return timeMinutes >= aptStartMinutes && timeMinutes < aptEndMinutes;
     });
   };
@@ -91,7 +94,7 @@ const DayView: React.FC<DayViewProps> = ({
     return `${hour}:${minute.toString().padStart(2, '0')}`;
   };
 
-  if (!isWorkingDay(date)) {
+  if (!isWorkingDay(new Date(date))) {
     return (
       <div className="text-center py-12">
         <div className="text-gray-500 text-lg">
@@ -112,7 +115,7 @@ const DayView: React.FC<DayViewProps> = ({
           {capitalize(new Date(date).toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }))}
         </h3>
         <div className="text-sm text-gray-500">
-          Orario: 9:00 - 13:00, 14:00 - 18:00
+          {getWorkingHoursDescription(new Date(date))}
         </div>
       </div>
 
@@ -122,9 +125,11 @@ const DayView: React.FC<DayViewProps> = ({
             const appointment = getAppointmentAtTime(time);
             const isOccupied = isTimeSlotOccupied(time);
             const canAdd = canAddAppointment(time);
-            const isLunchBreak = time === '13:00';
+            const canAdd30min = isTimeSlotAvailableForDuration(time, new Date(date), 30);
+            const canAdd60min = isTimeSlotAvailableForDuration(time, new Date(date), 60);
+            const isLunchBreakTime = isLunchBreak(time, new Date(date));
 
-            if (isLunchBreak) {
+            if (isLunchBreakTime) {
               return (
                 <div key={time} className="p-4 bg-gray-50 text-center text-gray-500">
                   <Clock className="w-4 h-4 inline mr-2" />
@@ -154,13 +159,16 @@ const DayView: React.FC<DayViewProps> = ({
                               {appointment.clientName}
                             </div>
                             <div className="text-sm text-gray-600">
-                              {appointment.treatment.name} • {appointment.treatment.duration} min
+                              {getTreatmentById(appointment.treatmentId)?.name} • {getTreatmentById(appointment.treatmentId)?.duration} min
                             </div>
-                            {appointment.notes && (
-                              <div className="text-xs text-gray-500 mt-1">
-                                {appointment.notes}
-                              </div>
-                            )}
+                            <div className="flex items-center gap-2 mt-1">
+                              <StatusBadge status={appointment.status} size="sm" />
+                              {appointment.notes && (
+                                <div className="text-xs text-gray-500">
+                                  {appointment.notes}
+                                </div>
+                              )}
+                            </div>
                           </div>
                           <div className="flex gap-2">
                             <button
@@ -188,9 +196,21 @@ const DayView: React.FC<DayViewProps> = ({
                             <Plus className="w-4 h-4" />
                             <span className="text-sm">Aggiungi prenotazione</span>
                           </button>
+                        ) : canAdd30min ? (
+                          <button
+                            onClick={() => onAddAppointment(date, time, 30)}
+                            className="flex items-center gap-2 text-green-600 hover:text-green-700 hover:bg-green-50 px-3 py-2 rounded-lg transition-colors duration-200"
+                          >
+                            <Plus className="w-4 h-4" />
+                            <span className="text-sm">Aggiungi prenotazione (max 30 min)</span>
+                          </button>
+                        ) : canAdd60min ? (
+                          <div className="text-sm text-gray-600">
+                            <span className="text-green-600">Disponibile per trattamenti di 60 min</span>
+                          </div>
                         ) : (
                           <span className="text-gray-400 text-sm">
-                            {time >= '17:00' ? 'Fine orario lavorativo' : 'Slot occupato'}
+                            {!isWorkingHour(time, new Date(date)) ? 'Fuori orario lavorativo' : 'Slot occupato'}
                           </span>
                         )}
                       </div>

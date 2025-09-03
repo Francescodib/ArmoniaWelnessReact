@@ -12,12 +12,11 @@ export interface Appointment {
   clientPhone: string;
   clientEmail: string;
   treatmentId: string;
-  treatment: Treatment;
   date: string; // YYYY-MM-DD
   startTime: string; // HH:MM
   endTime?: string; // HH:MM - opzionale, calcolato dinamicamente
   notes?: string;
-  status: 'confirmed' | 'pending' | 'cancelled';
+  status: 'confirmed' | 'pending';
   createdAt: Date;
   updatedAt: Date;
 }

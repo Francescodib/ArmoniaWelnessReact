@@ -1,6 +1,8 @@
 import React, { useState, useEffect } from 'react';
 import { X, Clock, User, Phone, Mail, FileText } from 'lucide-react';
 import type { Appointment, Treatment } from '../types/index';
+import { isWorkingHour, getWorkingHoursForDay, generateTimeSlots } from '../config/workingHours';
+import TimeSlotInfo from './TimeSlotInfo';
 
 interface AppointmentFormProps {
   isOpen: boolean;
@@ -10,6 +12,7 @@ interface AppointmentFormProps {
   treatments: Treatment[];
   selectedDate?: string;
   selectedTime?: string;
+  maxDuration?: number; // Durata massima consentita per questo slot
   existingAppointments?: Appointment[]; // Per controllare sovrapposizioni
 }
 
@@ -21,6 +24,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
   treatments,
   selectedDate,
   selectedTime,
+  maxDuration,
   existingAppointments
 }) => {
   const [formData, setFormData] = useState({
@@ -30,10 +34,66 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     treatmentId: '',
     date: '',
     startTime: '',
-    notes: ''
+    notes: '',
+    status: 'confirmed' as 'confirmed' | 'pending'
   });
 
   const [errors, setErrors] = useState<Record<string, string>>({});
+
+  // Genera slot orari disponibili per la data selezionata
+  const getAvailableTimeSlots = () => {
+    if (!formData.date) return [];
+    
+    const date = new Date(formData.date);
+    const allSlots = generateTimeSlots(date);
+    
+    if (!existingAppointments || !formData.treatmentId) return allSlots;
+    
+    const selectedTreatment = treatments.find(t => t.id === formData.treatmentId);
+    if (!selectedTreatment) return allSlots;
+    
+    // Filtra slot che non causano sovrapposizioni
+    return allSlots.filter(slot => {
+      // Verifica se lo slot è nell'orario lavorativo
+      if (!isWorkingHour(slot, date)) return false;
+      
+      // Verifica che non finisca dopo l'orario lavorativo
+      const [hour, minute] = slot.split(':').map(Number);
+      const startMinutes = hour * 60 + minute;
+      const endMinutes = startMinutes + selectedTreatment.duration;
+      const endHour = Math.floor(endMinutes / 60);
+      const workingHours = getWorkingHoursForDay(date);
+      const [endHourLimit] = workingHours.afternoonEnd.split(':').map(Number);
+      
+      if (endHour >= endHourLimit) return false;
+      
+      // Verifica sovrapposizioni con appuntamenti esistenti
+      const conflictingAppointment = existingAppointments.find(apt => {
+        if (apt.date !== formData.date) return false;
+        if (appointment && apt.id === appointment.id) return false; // Esclude appuntamento corrente
+        
+        const aptStart = apt.startTime.split(':').map(Number);
+        const aptStartMinutes = aptStart[0] * 60 + aptStart[1];
+        const aptTreatment = treatments.find(t => t.id === apt.treatmentId);
+        const aptEndMinutes = aptStartMinutes + (aptTreatment?.duration || 0);
+        
+        // Controlla se c'è sovrapposizione
+        return (startMinutes < aptEndMinutes && endMinutes > aptStartMinutes);
+      });
+      
+      return !conflictingAppointment;
+    });
+  };
+
+  // Genera tutti gli slot per mostrare anche quelli non disponibili
+  const getAllTimeSlots = () => {
+    if (!formData.date) return [];
+    return generateTimeSlots(new Date(formData.date));
+  };
+
+  const allTimeSlots = getAllTimeSlots();
+
+  const availableTimeSlots = getAvailableTimeSlots();
 
   useEffect(() => {
     if (appointment) {
@@ -44,7 +104,8 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
         treatmentId: appointment.treatmentId,
         date: appointment.date,
         startTime: appointment.startTime,
-        notes: appointment.notes || ''
+        notes: appointment.notes || '',
+        status: appointment.status
       });
     } else if (selectedDate && selectedTime) {
       setFormData(prev => ({
@@ -54,6 +115,16 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       }));
     }
   }, [appointment, selectedDate, selectedTime]);
+
+  // Reset orario quando cambia la data o il trattamento
+  useEffect(() => {
+    if (formData.date && formData.treatmentId) {
+      const availableSlots = getAvailableTimeSlots();
+      if (availableSlots.length > 0 && !availableSlots.includes(formData.startTime)) {
+        setFormData(prev => ({ ...prev, startTime: availableSlots[0] }));
+      }
+    }
+  }, [formData.date, formData.treatmentId]);
 
   const validateForm = () => {
     const newErrors: Record<string, string> = {};
@@ -88,42 +159,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     if (formData.treatmentId && formData.startTime) {
       const selectedTreatment = treatments.find(t => t.id === formData.treatmentId);
       if (selectedTreatment) {
-        const [startHour, startMinute] = formData.startTime.split(':').map(Number);
-        const startMinutes = startHour * 60 + startMinute;
-        
-        // Controllo orario lavorativo
-        if (startHour < 9 || startHour >= 18) {
-          newErrors.startTime = 'L\'orario deve essere tra le 9:00 e le 18:00';
-        }
-        
-        // Controllo pausa pranzo
-        if (startHour === 13) {
-          newErrors.startTime = 'Non è possibile prenotare durante la pausa pranzo (13:00)';
-        }
-        
-        // Controllo che non finisca dopo l'orario lavorativo
-        const endMinutes = startMinutes + selectedTreatment.duration;
-        const endHour = Math.floor(endMinutes / 60);
-        if (endHour >= 18) {
-          newErrors.startTime = `Il trattamento di ${selectedTreatment.duration} min non può iniziare a quest'ora (finirebbe dopo le 18:00)`;
-        }
-        
-        // Controllo sovrapposizioni con altri appuntamenti
-        if (existingAppointments && formData.date) {
-          const conflictingAppointment = existingAppointments.find(apt => {
-            if (apt.date !== formData.date) return false;
-            
-            const aptStart = apt.startTime.split(':').map(Number);
-            const aptStartMinutes = aptStart[0] * 60 + aptStart[1];
-            const aptEndMinutes = aptStartMinutes + apt.treatment.duration;
-            
-            // Controlla se c'è sovrapposizione
-            return (startMinutes < aptEndMinutes && endMinutes > aptStartMinutes);
-          });
-          
-          if (conflictingAppointment) {
-            newErrors.startTime = `Sovrapposizione con appuntamento di ${conflictingAppointment.clientName} (${conflictingAppointment.startTime} - ${conflictingAppointment.treatment.duration} min)`;
-          }
+        // Controllo che l'orario sia tra quelli disponibili
+        if (!availableTimeSlots.includes(formData.startTime)) {
+          newErrors.startTime = 'L\'orario selezionato non è più disponibile';
         }
       }
     }
@@ -145,11 +183,10 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       clientPhone: formData.clientPhone.trim(),
       clientEmail: formData.clientEmail.trim(),
       treatmentId: formData.treatmentId,
-      treatment: selectedTreatment,
       date: formData.date,
       startTime: formData.startTime,
       notes: formData.notes.trim(),
-      status: 'confirmed' as const
+      status: formData.status
     };
 
     onSubmit(appointmentData);
@@ -248,14 +285,38 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
               className={`input-field ${errors.treatmentId ? 'border-red-500' : ''}`}
             >
               <option value="">Seleziona trattamento</option>
-              {treatments.map((treatment) => (
-                <option key={treatment.id} value={treatment.id}>
-                  {treatment.name} ({treatment.duration} min - €{treatment.price})
-                </option>
-              ))}
+              {treatments.map((treatment) => {
+                // Verifica se il trattamento è disponibile per questo slot
+                const isAvailable = availableTimeSlots.length > 0;
+                const isTooLong = maxDuration && treatment.duration > maxDuration;
+                const wouldOverlap = !isAvailable && !isTooLong;
+                
+                let reason = '';
+                if (isTooLong) {
+                  reason = ` - Troppo lungo per questo slot (max ${maxDuration} min)`;
+                } else if (wouldOverlap) {
+                  reason = ' - Causerebbe sovrapposizioni';
+                }
+                
+                return (
+                  <option 
+                    key={treatment.id} 
+                    value={treatment.id}
+                    disabled={!isAvailable}
+                    className={!isAvailable ? 'text-gray-400' : ''}
+                  >
+                    {treatment.name} ({treatment.duration} min - €{treatment.price}){reason}
+                  </option>
+                );
+              })}
             </select>
             {errors.treatmentId && (
               <p className="text-red-500 text-sm mt-1">{errors.treatmentId}</p>
+            )}
+            {maxDuration && (
+              <p className="text-xs text-blue-600 mt-1">
+                💡 Durata massima consentita per questo slot: {maxDuration} minuti
+              </p>
             )}
           </div>
 
@@ -275,23 +336,51 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
               )}
             </div>
 
-            <div>
-              <label className="block text-sm font-medium text-gray-700 mb-2">
-                Orario *
-              </label>
-              <div className="relative">
-                <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
-                <input
-                  type="time"
-                  value={formData.startTime}
-                  onChange={(e) => handleInputChange('startTime', e.target.value)}
-                  className={`input-field pl-10 ${errors.startTime ? 'border-red-500' : ''}`}
-                />
-              </div>
-              {errors.startTime && (
-                <p className="text-red-500 text-sm mt-1">{errors.startTime}</p>
-              )}
-            </div>
+                         <div>
+               <label className="block text-sm font-medium text-gray-700 mb-2">
+                 Orario *
+               </label>
+               <div className="relative">
+                 <Clock className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                 <select
+                   value={formData.startTime}
+                   onChange={(e) => handleInputChange('startTime', e.target.value)}
+                   className={`input-field pl-10 ${errors.startTime ? 'border-red-500' : ''}`}
+                   disabled={allTimeSlots.length === 0}
+                 >
+                   <option value="">
+                     {allTimeSlots.length === 0 ? 'Nessuno slot disponibile' : 'Seleziona orario'}
+                   </option>
+                   {allTimeSlots.map((slot) => {
+                     const isAvailable = availableTimeSlots.includes(slot);
+                     const isWorking = isWorkingHour(slot, new Date(formData.date));
+                     
+                     return (
+                       <option 
+                         key={slot} 
+                         value={slot}
+                         disabled={!isAvailable}
+                         className={!isAvailable ? 'text-gray-400' : ''}
+                       >
+                         {slot} {!isAvailable ? (isWorking ? '(Occupato)' : '(Fuori orario)') : ''}
+                       </option>
+                     );
+                   })}
+                 </select>
+               </div>
+               {errors.startTime && (
+                 <p className="text-red-500 text-sm mt-1">{errors.startTime}</p>
+               )}
+               <div className="mt-2">
+                 <TimeSlotInfo
+                   availableSlots={availableTimeSlots}
+                   selectedDate={formData.date}
+                   selectedTreatment={formData.treatmentId}
+                   totalSlots={formData.date ? generateTimeSlots(new Date(formData.date)).length : undefined}
+                   showOccupiedInfo={true}
+                 />
+               </div>
+             </div>
           </div>
 
           <div>
@@ -309,6 +398,27 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
               />
             </div>
           </div>
+
+          {/* Campo Status - visibile solo in modalità modifica */}
+          {appointment && (
+            <div>
+              <label className="block text-sm font-medium text-gray-700 mb-2">
+                Status Prenotazione
+              </label>
+              <select
+                value={formData.status}
+                onChange={(e) => handleInputChange('status', e.target.value)}
+                className="input-field"
+              >
+                               <option value="confirmed">✅ Confermata</option>
+               <option value="pending">⏳ In Attesa</option>
+              </select>
+                             <p className="text-xs text-gray-500 mt-1">
+                 {formData.status === 'confirmed' && 'Cliente ha confermato la prenotazione'}
+                 {formData.status === 'pending' && 'In attesa di conferma del cliente'}
+               </p>
+            </div>
+          )}
 
           <div className="flex gap-3 pt-4">
             <button
