@@ -1,6 +1,5 @@
 import { useMemo } from 'react';
 import { 
-  defaultWorkingHours, 
   getWorkingHoursForDay, 
   isWorkingDay, 
   isWorkingHour, 

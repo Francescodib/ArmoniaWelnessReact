@@ -7,10 +7,11 @@ import {
   isWorkingDay, 
   isWorkingHour, 
   generateTimeSlots, 
-  isLunchBreak, 
   getWorkingHoursDescription,
-  getWorkingHoursForDay,
-  isTimeSlotAvailableForDuration
+  isTimeSlotAvailableForDuration,
+  isWithinWorkingHours,
+  conflictsWithLunchBreak,
+  hasAppointmentConflict
 } from '../config/workingHours';
 
 interface DayViewProps {
@@ -37,6 +38,25 @@ const DayView: React.FC<DayViewProps> = ({
 
   // Genera slot orari basati sulla configurazione
   const timeSlots = generateTimeSlots(new Date(date));
+  
+  // Aggiunge un blocco di pausa pranzo se necessario
+  const timeSlotsWithLunchBreak = (() => {
+    const dateObj = new Date(date);
+    if (dateObj.getDay() === 0 || dateObj.getDay() === 6) return timeSlots; // Weekend
+    
+    const slots = [...timeSlots];
+    const lunchBreakIndex = slots.findIndex(slot => {
+      const [hour] = slot.split(':').map(Number);
+      return hour >= 13; // Trova il primo slot del pomeriggio
+    });
+    
+    if (lunchBreakIndex > 0) {
+      // Inserisce il blocco di pausa pranzo prima del primo slot del pomeriggio
+      slots.splice(lunchBreakIndex, 0, 'lunch-break');
+    }
+    
+    return slots;
+  })();
 
   const getAppointmentAtTime = (time: string) => {
     return appointments.find(apt => apt.startTime === time);
@@ -64,29 +84,18 @@ const DayView: React.FC<DayViewProps> = ({
     if (!isWorkingDay(new Date(date)) || !isWorkingHour(time, new Date(date))) return false;
     if (isTimeSlotOccupied(time)) return false;
     
-    // Verifica che non ci siano sovrapposizioni
-    const [hour, minute] = time.split(':').map(Number);
-    const timeMinutes = hour * 60 + minute;
+    const duration = treatmentDuration || 60; // Durata del trattamento o default 60 min
     
     // Verifica che non finisca dopo l'orario lavorativo
-    const duration = treatmentDuration || 60; // Durata del trattamento o default 60 min
-    const endTimeMinutes = timeMinutes + duration;
+    if (!isWithinWorkingHours(time, duration, new Date(date))) return false;
     
-    // Verifica che non finisca dopo l'orario lavorativo del giorno
-    const workingHours = getWorkingHoursForDay(new Date(date));
-    const [endHourLimit, endMinuteLimit] = workingHours.afternoonEnd.split(':').map(Number);
-    const endLimitMinutes = endHourLimit * 60 + endMinuteLimit;
+    // Verifica che non si sovrapponga alla pausa pranzo
+    if (conflictsWithLunchBreak(time, duration, new Date(date))) return false;
     
-    // Permette di prenotare se finisce esattamente all'orario di chiusura o prima
-    if (endTimeMinutes > endLimitMinutes) return false;
+    // Verifica conflitti con appuntamenti esistenti
+    if (hasAppointmentConflict(time, duration, appointments, treatments)) return false;
     
-    return !appointments.some(apt => {
-      const aptStart = apt.startTime.split(':').map(Number);
-      const aptStartMinutes = aptStart[0] * 60 + aptStart[1];
-      const treatment = getTreatmentById(apt.treatmentId);
-      const aptEndMinutes = aptStartMinutes + (treatment?.duration || 0);
-      return timeMinutes >= aptStartMinutes && timeMinutes < aptEndMinutes;
-    });
+    return true;
   };
 
   const formatTime = (time: string) => {
@@ -121,22 +130,23 @@ const DayView: React.FC<DayViewProps> = ({
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="grid grid-cols-1 divide-y divide-gray-200">
-          {timeSlots.map((time) => {
+          {timeSlotsWithLunchBreak.map((time) => {
+            // Gestisce il blocco di pausa pranzo
+            if (time === 'lunch-break') {
+              return (
+                <div key="lunch-break" className="p-4 bg-amber-50 border-l-4 border-amber-400 text-center">
+                  <Clock className="w-4 h-4 inline mr-2 text-amber-600" />
+                  <span className="text-amber-700 font-medium">Pausa pranzo</span>
+                  <div className="text-xs text-amber-600 mt-1">13:00 - 14:00</div>
+                </div>
+              );
+            }
+            
             const appointment = getAppointmentAtTime(time);
             const isOccupied = isTimeSlotOccupied(time);
             const canAdd = canAddAppointment(time);
             const canAdd30min = isTimeSlotAvailableForDuration(time, new Date(date), 30);
             const canAdd60min = isTimeSlotAvailableForDuration(time, new Date(date), 60);
-            const isLunchBreakTime = isLunchBreak(time, new Date(date));
-
-            if (isLunchBreakTime) {
-              return (
-                <div key={time} className="p-4 bg-gray-50 text-center text-gray-500">
-                  <Clock className="w-4 h-4 inline mr-2" />
-                  Pausa pranzo
-                </div>
-              );
-            }
 
             return (
               <div

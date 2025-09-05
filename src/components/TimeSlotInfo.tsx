@@ -1,5 +1,5 @@
 import React from 'react';
-import { Clock, AlertCircle, CheckCircle, Info } from 'lucide-react';
+import { AlertCircle, CheckCircle, Info } from 'lucide-react';
 
 interface TimeSlotInfoProps {
   availableSlots: string[];

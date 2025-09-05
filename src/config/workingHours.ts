@@ -94,33 +94,85 @@ export const generateTimeSlots = (date: Date): string[] => {
 
 // Helper per verificare se un orario è pausa pranzo
 export const isLunchBreak = (time: string, date: Date): boolean => {
-  const [hour] = time.split(':').map(Number);
+  const [hour, minute] = time.split(':').map(Number);
+  const timeMinutes = hour * 60 + minute;
   
   // Pausa pranzo solo nei giorni feriali
   if (date.getDay() === 0 || date.getDay() === 6) return false;
   
-  return hour === 13;
+  // Pausa pranzo: 13:00 - 14:00
+  const lunchStart = 13 * 60; // 13:00
+  const lunchEnd = 14 * 60;   // 14:00
+  
+  return timeMinutes >= lunchStart && timeMinutes < lunchEnd;
 };
 
 // Helper per verificare se uno slot è disponibile per una durata specifica
 export const isTimeSlotAvailableForDuration = (time: string, date: Date, duration: number): boolean => {
   if (!isWorkingDay(date) || !isWorkingHour(time, date)) return false;
   
-  const [hour, minute] = time.split(':').map(Number);
-  const timeMinutes = hour * 60 + minute;
-  const endTimeMinutes = timeMinutes + duration;
-  
   // Verifica che non finisca dopo l'orario lavorativo
+  if (!isWithinWorkingHours(time, duration, date)) return false;
+  
+  // Verifica che non si sovrapponga alla pausa pranzo
+  if (conflictsWithLunchBreak(time, duration, date)) return false;
+  
+  return true;
+};
+
+// Helper per verificare se un trattamento è entro gli orari lavorativi
+export const isWithinWorkingHours = (startTime: string, duration: number, date: Date): boolean => {
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const startMinutes = startHour * 60 + startMinute;
+  const endMinutes = startMinutes + duration;
+  
   const workingHours = getWorkingHoursForDay(date);
   const [endHourLimit, endMinuteLimit] = workingHours.afternoonEnd.split(':').map(Number);
   const endLimitMinutes = endHourLimit * 60 + endMinuteLimit;
   
-  // Permette di prenotare se finisce esattamente all'orario di chiusura o prima
-  if (endTimeMinutes > endLimitMinutes) return false;
+  // Non permettere di finire dopo l'orario di chiusura
+  return endMinutes <= endLimitMinutes;
+};
+
+// Helper per verificare se un trattamento si sovrappone alla pausa pranzo
+export const conflictsWithLunchBreak = (startTime: string, duration: number, date: Date): boolean => {
+  if (date.getDay() === 0 || date.getDay() === 6) return false; // Weekend
   
-  // Verifica che non ci siano sovrapposizioni con appuntamenti esistenti
-  // Nota: questa funzione non ha accesso agli appuntamenti, quindi verifica solo i vincoli temporali
-  return true;
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const startMinutes = startHour * 60 + startMinute;
+  const endMinutes = startMinutes + duration;
+  
+  // Pausa pranzo: 13:00 - 14:00
+  const lunchStart = 13 * 60; // 13:00
+  const lunchEnd = 14 * 60;   // 14:00
+  
+  // Conflitto se il trattamento si sovrappone alla pausa pranzo
+  return startMinutes < lunchEnd && endMinutes > lunchStart;
+};
+
+// Helper per verificare conflitti tra appuntamenti
+export const hasAppointmentConflict = (
+  startTime: string, 
+  duration: number, 
+  existingAppointments: { id: string; startTime: string; treatmentId: string; date: string }[], 
+  treatments: { id: string; duration: number }[],
+  excludeAppointmentId?: string
+): boolean => {
+  const [startHour, startMinute] = startTime.split(':').map(Number);
+  const startMinutes = startHour * 60 + startMinute;
+  const endMinutes = startMinutes + duration;
+  
+  return existingAppointments.some(apt => {
+    if (excludeAppointmentId && apt.id === excludeAppointmentId) return false;
+    
+    const aptStart = apt.startTime.split(':').map(Number);
+    const aptStartMinutes = aptStart[0] * 60 + aptStart[1];
+    const treatment = treatments.find(t => t.id === apt.treatmentId);
+    const aptEndMinutes = aptStartMinutes + (treatment?.duration || 0);
+    
+    // Sovrapposizione: inizio nuovo < fine esistente E fine nuovo > inizio esistente
+    return startMinutes < aptEndMinutes && endMinutes > aptStartMinutes;
+  });
 };
 
 // Helper per ottenere la descrizione dell'orario lavorativo
