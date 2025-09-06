@@ -5,7 +5,7 @@ Un'applicazione web moderna e intuitiva per la gestione completa delle prenotazi
 ## 🚀 Caratteristiche Principali
 
 ### 🔐 Sistema di Autenticazione
-- Login sicuro con credenziali protette (admin/admin)
+- Login sicuro con credenziali demo (admin/admin)
 - Interfaccia riservata al personale del centro
 - Gestione sessioni utente con logout immediato
 
@@ -22,7 +22,7 @@ Un'applicazione web moderna e intuitiva per la gestione completa delle prenotazi
 
 ### 🕒 Sistema Orari Intelligente
 - **Configurazione centralizzata** tramite file di impostazioni
-- **Orari lavorativi**:
+- **Orari lavorativi configurabili**:
   - Lunedì-Venerdì: 9:00-13:00 e 14:00-18:00
   - Sabato: 9:00-13:00 (solo mattina)
   - Domenica: Chiuso
@@ -96,7 +96,7 @@ Un'applicazione web moderna e intuitiva per la gestione completa delle prenotazi
 
 ### 1. Clonazione Progetto
 ```bash
-git clone <repository-url>
+git clone https://github.com/Francescodib/ArmoniaWelnessReact.git
 cd ArmoniaWellnessReact
 ```
 
@@ -109,7 +109,6 @@ npm install
 ```bash
 npm run dev
 ```
-L'applicazione sarà disponibile su `http://localhost:5173`
 
 ### 4. Build Produzione
 ```bash
@@ -269,4 +268,4 @@ Per contribuire al progetto:
 
 ---
 
-**Armonia Wellness** - Trasforma la gestione delle prenotazioni del tuo centro benessere in un'esperienza digitale moderna, efficiente e user-friendly.
+**Armonia Wellness** - La gestione delle prenotazioni del tuo centro benessere moderna, efficiente e user-friendly.
