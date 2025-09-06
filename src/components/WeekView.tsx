@@ -7,7 +7,14 @@ import {
   isWorkingDay, 
   isWorkingHour, 
   generateTimeSlots, 
-  getWorkingHoursDescription 
+  getWorkingHoursDescription,
+  isWithinWorkingHours,
+  conflictsWithLunchBreak,
+  hasAppointmentConflict,
+  filterAppointmentsInWorkingHours,
+  isDateInPast,
+  isTimeInPast,
+  isTimeBookable
 } from '../config/workingHours';
 
 interface WeekViewProps {
@@ -34,6 +41,22 @@ const WeekView: React.FC<WeekViewProps> = ({
 
   // Genera slot orari basati sulla configurazione (usa il primo giorno della settimana come riferimento)
   const timeSlots = generateTimeSlots(startDate);
+  
+  // Aggiunge un blocco di pausa pranzo se necessario (solo per giorni feriali)
+  const timeSlotsWithLunchBreak = (() => {
+    const slots = [...timeSlots];
+    const lunchBreakIndex = slots.findIndex(slot => {
+      const [hour] = slot.split(':').map(Number);
+      return hour >= 13; // Trova il primo slot del pomeriggio
+    });
+    
+    if (lunchBreakIndex > 0) {
+      // Inserisce il blocco di pausa pranzo prima del primo slot del pomeriggio
+      slots.splice(lunchBreakIndex, 0, 'lunch-break');
+    }
+    
+    return slots;
+  })();
 
   const getWeekDays = (start: Date) => {
     const days = [];
@@ -50,7 +73,9 @@ const WeekView: React.FC<WeekViewProps> = ({
   // Le funzioni isWorkingDay e isWorkingHour sono ora importate dalla configurazione
 
   const getAppointmentsForDayAndTime = (date: string, time: string) => {
-    return appointments.filter(apt => apt.date === date && apt.startTime === time);
+    const dayAppointments = appointments.filter(apt => apt.date === date && apt.startTime === time);
+    // Filtra solo gli appuntamenti che sono in orari lavorativi
+    return filterAppointmentsInWorkingHours(dayAppointments);
   };
 
   const formatTime = (time: string) => {
@@ -73,7 +98,8 @@ const WeekView: React.FC<WeekViewProps> = ({
   };
 
   const isTimeSlotOccupied = (date: string, time: string) => {
-    return appointments.some(apt => {
+    const filteredAppointments = filterAppointmentsInWorkingHours(appointments);
+    return filteredAppointments.some(apt => {
       if (apt.date !== date) return false;
       const aptStart = apt.startTime;
       const aptEnd = getAppointmentEndTime(apt);
@@ -81,23 +107,28 @@ const WeekView: React.FC<WeekViewProps> = ({
     });
   };
 
-  const canAddAppointment = (date: string, time: string) => {
+  const canAddAppointment = (date: string, time: string, treatmentDuration?: number) => {
+    // Verifica se l'orario è prenotabile (non nel passato)
+    if (!isTimeBookable(time, date)) return false;
+    
     const dateObj = new Date(date);
     if (!isWorkingDay(dateObj) || !isWorkingHour(time, dateObj)) return false;
     if (isTimeSlotOccupied(date, time)) return false;
     
-    // Verifica che non ci siano sovrapposizioni
-    const [hour, minute] = time.split(':').map(Number);
-    const timeMinutes = hour * 60 + minute;
+    const duration = treatmentDuration || 60; // Durata del trattamento o default 60 min
     
-    return !appointments.some(apt => {
-      if (apt.date !== date) return false;
-      const aptStart = apt.startTime.split(':').map(Number);
-      const aptStartMinutes = aptStart[0] * 60 + aptStart[1];
-      const treatment = getTreatmentById(apt.treatmentId);
-      const aptEndMinutes = aptStartMinutes + (treatment?.duration || 0);
-      return timeMinutes >= aptStartMinutes && timeMinutes < aptEndMinutes;
-    });
+    // Verifica che non finisca dopo l'orario lavorativo
+    if (!isWithinWorkingHours(time, duration, dateObj)) return false;
+    
+    // Verifica che non si sovrapponga alla pausa pranzo
+    if (conflictsWithLunchBreak(time, duration, dateObj)) return false;
+    
+    // Verifica conflitti con appuntamenti esistenti
+    const dayAppointments = appointments.filter(apt => apt.date === date);
+    const filteredDayAppointments = filterAppointmentsInWorkingHours(dayAppointments);
+    if (hasAppointmentConflict(time, duration, filteredDayAppointments, treatments)) return false;
+    
+    return true;
   };
 
   return (
@@ -136,33 +167,46 @@ const WeekView: React.FC<WeekViewProps> = ({
 
         {/* Righe degli orari */}
         <div className="grid grid-cols-8 divide-y divide-gray-200">
-          {timeSlots.map((time) => {
-            const isLunchBreak = time === '13:00';
-            
+          {timeSlotsWithLunchBreak.map((time) => {
             return (
               <React.Fragment key={time}>
                 {/* Colonna orario */}
                 <div className="p-3 bg-gray-50 text-sm font-medium text-gray-700 border-r border-gray-200">
-                  {formatTime(time)}
+                  {time === 'lunch-break' ? (
+                    <div className="flex items-center justify-center">
+                      <Clock className="w-4 h-4 mr-1 text-amber-600" />
+                      <span className="text-amber-600">Pausa</span>
+                    </div>
+                  ) : (
+                    formatTime(time)
+                  )}
                 </div>
 
                 {/* Colonne dei giorni */}
                 {weekDays.map((day) => {
                   const dateStr = formatDateToISOString(day);
-                  const dayAppointments = getAppointmentsForDayAndTime(dateStr, time);
-                  const isOccupied = isTimeSlotOccupied(dateStr, time);
-                  const canAdd = canAddAppointment(dateStr, time);
                   const isWorking = isWorkingDay(day);
-
-                  if (isLunchBreak) {
+                  const isSaturday = day.getDay() === 6;
+                  const isSunday = day.getDay() === 0;
+                  
+                  // Gestisce il blocco di pausa pranzo
+                  if (time === 'lunch-break') {
+                    if (isSaturday || isSunday) {
+                      return (
+                        <div key={day.toISOString()} className="p-3 bg-gray-100 text-center text-gray-400 text-sm border-l border-gray-200">
+                          Chiuso
+                        </div>
+                      );
+                    }
                     return (
-                      <div key={day.toISOString()} className="p-3 bg-gray-50 text-center text-gray-500 text-sm border-l border-gray-200">
+                      <div key={day.toISOString()} className="p-3 bg-amber-50 text-center text-amber-700 text-sm border-l border-gray-200">
                         <Clock className="w-4 h-4 inline mr-1" />
-                        Pausa
+                        Pausa pranzo
                       </div>
                     );
                   }
 
+                  // Gestisce i giorni non lavorativi
                   if (!isWorking) {
                     return (
                       <div key={day.toISOString()} className="p-3 bg-gray-100 text-center text-gray-400 text-sm border-l border-gray-200">
@@ -170,6 +214,22 @@ const WeekView: React.FC<WeekViewProps> = ({
                       </div>
                     );
                   }
+
+                  // Gestisce il sabato pomeriggio come chiuso
+                  if (isSaturday) {
+                    const [hour] = time.split(':').map(Number);
+                    if (hour >= 13) {
+                      return (
+                        <div key={day.toISOString()} className="p-3 bg-gray-100 text-center text-gray-400 text-sm border-l border-gray-200">
+                          Chiuso
+                        </div>
+                      );
+                    }
+                  }
+
+                  const dayAppointments = getAppointmentsForDayAndTime(dateStr, time);
+                  const isOccupied = isTimeSlotOccupied(dateStr, time);
+                  const canAdd = canAddAppointment(dateStr, time);
 
                   return (
                     <div
@@ -185,10 +245,10 @@ const WeekView: React.FC<WeekViewProps> = ({
                               <div className="font-medium text-indigo-900 text-sm">
                                 {appointment.clientName}
                               </div>
-                                                              <div className="text-xs text-indigo-700">
-                                  {getTreatmentById(appointment.treatmentId)?.name}
-                                </div>
-                                <StatusBadge status={appointment.status} size="sm" showIcon={false} />
+                              <div className="text-xs text-indigo-700">
+                                {getTreatmentById(appointment.treatmentId)?.name}
+                              </div>
+                              <StatusBadge status={appointment.status} size="sm" showIcon={false} />
                               <div className="flex gap-1 mt-1">
                                 <button
                                   onClick={() => onEditAppointment(appointment)}
@@ -207,7 +267,11 @@ const WeekView: React.FC<WeekViewProps> = ({
                           </div>
                         ))
                       ) : (
-                        canAdd ? (
+                        !isTimeBookable(time, dateStr) ? (
+                          <div className="text-gray-400 text-xs text-center">
+                           
+                          </div>
+                        ) : canAdd ? (
                           <button
                             onClick={() => onAddAppointment(dateStr, time)}
                             className="w-full h-full flex items-center justify-center text-gray-400 hover:text-indigo-600 hover:bg-indigo-50 rounded-lg transition-colors duration-200"

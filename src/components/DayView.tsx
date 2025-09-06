@@ -8,10 +8,12 @@ import {
   isWorkingHour, 
   generateTimeSlots, 
   getWorkingHoursDescription,
-  isTimeSlotAvailableForDuration,
   isWithinWorkingHours,
   conflictsWithLunchBreak,
-  hasAppointmentConflict
+  hasAppointmentConflict,
+  filterAppointmentsInWorkingHours,
+  isDateInPast,
+  isTimeBookable
 } from '../config/workingHours';
 
 interface DayViewProps {
@@ -59,7 +61,8 @@ const DayView: React.FC<DayViewProps> = ({
   })();
 
   const getAppointmentAtTime = (time: string) => {
-    return appointments.find(apt => apt.startTime === time);
+    const filteredAppointments = filterAppointmentsInWorkingHours(appointments);
+    return filteredAppointments.find(apt => apt.startTime === time);
   };
 
   const getAppointmentEndTime = (appointment: Appointment) => {
@@ -73,14 +76,20 @@ const DayView: React.FC<DayViewProps> = ({
   };
 
   const isTimeSlotOccupied = (time: string) => {
-    return appointments.some(apt => {
+    const filteredAppointments = filterAppointmentsInWorkingHours(appointments);
+    return filteredAppointments.some(apt => {
       const aptStart = apt.startTime;
       const aptEnd = getAppointmentEndTime(apt);
       return time >= aptStart && time < aptEnd;
     });
   };
 
+  // Le funzioni isDateInPast, isTimeInPast e isTimeBookable sono ora importate dalla configurazione
+
   const canAddAppointment = (time: string, treatmentDuration?: number) => {
+    // Verifica se l'orario è prenotabile (non nel passato)
+    if (!isTimeBookable(time, date)) return false;
+    
     if (!isWorkingDay(new Date(date)) || !isWorkingHour(time, new Date(date))) return false;
     if (isTimeSlotOccupied(time)) return false;
     
@@ -93,7 +102,28 @@ const DayView: React.FC<DayViewProps> = ({
     if (conflictsWithLunchBreak(time, duration, new Date(date))) return false;
     
     // Verifica conflitti con appuntamenti esistenti
-    if (hasAppointmentConflict(time, duration, appointments, treatments)) return false;
+    const filteredAppointments = filterAppointmentsInWorkingHours(appointments);
+    if (hasAppointmentConflict(time, duration, filteredAppointments, treatments)) return false;
+    
+    return true;
+  };
+
+  // Helper per verificare se uno slot è disponibile per una durata specifica considerando i conflitti
+  const isTimeSlotAvailableForDurationWithConflicts = (time: string, duration: number) => {
+    // Verifica se l'orario è prenotabile (non nel passato)
+    if (!isTimeBookable(time, date)) return false;
+    
+    if (!isWorkingDay(new Date(date)) || !isWorkingHour(time, new Date(date))) return false;
+    
+    // Verifica che non finisca dopo l'orario lavorativo
+    if (!isWithinWorkingHours(time, duration, new Date(date))) return false;
+    
+    // Verifica che non si sovrapponga alla pausa pranzo
+    if (conflictsWithLunchBreak(time, duration, new Date(date))) return false;
+    
+    // Verifica conflitti con appuntamenti esistenti
+    const filteredAppointments = filterAppointmentsInWorkingHours(appointments);
+    if (hasAppointmentConflict(time, duration, filteredAppointments, treatments)) return false;
     
     return true;
   };
@@ -102,6 +132,9 @@ const DayView: React.FC<DayViewProps> = ({
     const [hour, minute] = time.split(':').map(Number);
     return `${hour}:${minute.toString().padStart(2, '0')}`;
   };
+
+  // Non blocchiamo più la visualizzazione per le date passate, 
+  // ma impediamo solo le prenotazioni tramite canAddAppointment
 
   if (!isWorkingDay(new Date(date))) {
     return (
@@ -120,13 +153,31 @@ const DayView: React.FC<DayViewProps> = ({
   return (
     <div className="space-y-4">
       <div className="flex items-center justify-between">
-        <h3 className="text-lg font-semibold text-gray-900">
-          {capitalize(new Date(date).toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }))}
-        </h3>
+        <div className="flex items-center gap-3">
+          <h3 className="text-lg font-semibold text-gray-900">
+            {capitalize(new Date(date).toLocaleDateString('it-IT', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' }))}
+          </h3>
+          {isDateInPast(date) && (
+            <span className="px-2 py-1 text-xs font-medium text-gray-600 bg-gray-100 rounded-full">
+              Data passata
+            </span>
+          )}
+        </div>
         <div className="text-sm text-gray-500">
           {getWorkingHoursDescription(new Date(date))}
         </div>
       </div>
+      
+      {isDateInPast(date) && (
+        <div className="bg-amber-50 border border-amber-200 rounded-lg p-3">
+          <div className="flex items-center gap-2">
+            <Clock className="w-4 h-4 text-amber-600" />
+            <p className="text-sm text-amber-800">
+              <strong>Modalità consultazione:</strong> Puoi visualizzare gli appuntamenti esistenti ma non è possibile aggiungere nuove prenotazioni per date passate.
+            </p>
+          </div>
+        </div>
+      )}
 
       <div className="bg-white rounded-lg border border-gray-200 overflow-hidden">
         <div className="grid grid-cols-1 divide-y divide-gray-200">
@@ -145,8 +196,8 @@ const DayView: React.FC<DayViewProps> = ({
             const appointment = getAppointmentAtTime(time);
             const isOccupied = isTimeSlotOccupied(time);
             const canAdd = canAddAppointment(time);
-            const canAdd30min = isTimeSlotAvailableForDuration(time, new Date(date), 30);
-            const canAdd60min = isTimeSlotAvailableForDuration(time, new Date(date), 60);
+            const canAdd30min = isTimeSlotAvailableForDurationWithConflicts(time, 30);
+            const canAdd60min = isTimeSlotAvailableForDurationWithConflicts(time, 60);
 
             return (
               <div
@@ -184,12 +235,14 @@ const DayView: React.FC<DayViewProps> = ({
                             <button
                               onClick={() => onEditAppointment(appointment)}
                               className="p-1 text-indigo-600 hover:text-indigo-800 hover:bg-indigo-100 rounded"
+                              title="Modifica appuntamento"
                             >
                               <Edit className="w-4 h-4" />
                             </button>
                             <button
                               onClick={() => onDeleteAppointment(appointment.id)}
                               className="p-1 text-red-600 hover:text-red-800 hover:bg-red-100 rounded"
+                              title="Elimina appuntamento"
                             >
                               <Trash2 className="w-4 h-4" />
                             </button>
@@ -198,7 +251,15 @@ const DayView: React.FC<DayViewProps> = ({
                       </div>
                     ) : (
                       <div className="flex-1">
-                        {canAdd ? (
+                        {isDateInPast(date) ? (
+                          <span className="text-gray-400 text-sm">
+                            Slot libero (solo consultazione)
+                          </span>
+                        ) : !isTimeBookable(time, date) ? (
+                          <span className="text-gray-400 text-sm">
+                            
+                          </span>
+                        ) : canAdd ? (
                           <button
                             onClick={() => onAddAppointment(date, time)}
                             className="flex items-center gap-2 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 px-3 py-2 rounded-lg transition-colors duration-200"
@@ -220,7 +281,10 @@ const DayView: React.FC<DayViewProps> = ({
                           </div>
                         ) : (
                           <span className="text-gray-400 text-sm">
-                            {!isWorkingHour(time, new Date(date)) ? 'Fuori orario lavorativo' : 'Slot occupato'}
+                            {!isWorkingHour(time, new Date(date)) 
+                              ? 'Fuori orario lavorativo' 
+                              : 'Slot occupato'
+                            }
                           </span>
                         )}
                       </div>

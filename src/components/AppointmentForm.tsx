@@ -6,9 +6,14 @@ import {
   generateTimeSlots,
   isWithinWorkingHours,
   conflictsWithLunchBreak,
-  hasAppointmentConflict
+  hasAppointmentConflict,
+  isDateInPast,
+  isTimeInPast,
+  isTimeBookable
 } from '../config/workingHours';
 import TimeSlotInfo from './TimeSlotInfo';
+
+// Le funzioni isDateInPast, isTimeInPast e isTimeBookable sono ora importate dalla configurazione
 
 interface AppointmentFormProps {
   isOpen: boolean;
@@ -60,6 +65,9 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
     
     // Filtra slot che non causano sovrapposizioni
     return allSlots.filter(slot => {
+      // Verifica se l'orario è prenotabile (non nel passato)
+      if (!isTimeBookable(slot, formData.date)) return false;
+      
       // Verifica se lo slot è nell'orario lavorativo
       if (!isWorkingHour(slot, date)) return false;
       
@@ -162,6 +170,17 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
       newErrors.startTime = 'Seleziona un orario';
     }
 
+    // Validazione date e orari passati
+    if (formData.startTime && formData.date) {
+      if (!isTimeBookable(formData.startTime, formData.date)) {
+        if (isDateInPast(formData.date)) {
+          newErrors.date = 'Non è possibile prenotare appuntamenti in date passate';
+        } else {
+          newErrors.startTime = 'Non è possibile prenotare appuntamenti in orari passati';
+        }
+      }
+    }
+
     // Validazione orari lavorativi e sovrapposizioni
     if (formData.treatmentId && formData.startTime && formData.date) {
       const selectedTreatment = treatments.find(t => t.id === formData.treatmentId);
@@ -244,7 +263,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
 
   return (
     <div className="fixed inset-0 bg-black bg-opacity-50 flex items-center justify-center p-4 z-50">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-md max-h-[90vh] overflow-y-auto">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-xl max-h-[90vh] overflow-y-auto">
         <div className="flex items-center justify-between p-6 border-b border-gray-200">
           <h2 className="text-xl font-semibold text-gray-900">
             {appointment ? 'Modifica Prenotazione' : 'Nuova Prenotazione'}
@@ -402,6 +421,21 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                    {allTimeSlots.map((slot) => {
                      const isAvailable = availableTimeSlots.includes(slot);
                      const isWorking = isWorkingHour(slot, new Date(formData.date));
+                     const isPastDate = isDateInPast(formData.date);
+                     const isPastTime = isTimeInPast(slot, formData.date);
+                     
+                     let reason = '';
+                     if (!isAvailable) {
+                       if (isPastDate) {
+                         reason = '(Data passata)';
+                       } else if (isPastTime) {
+                         reason = '(Orario passato)';
+                       } else if (!isWorking) {
+                         reason = '(Fuori orario)';
+                       } else {
+                         reason = '(non disponibile)';
+                       }
+                     }
                      
                      return (
                        <option 
@@ -410,7 +444,7 @@ const AppointmentForm: React.FC<AppointmentFormProps> = ({
                          disabled={!isAvailable}
                          className={!isAvailable ? 'text-gray-400' : ''}
                        >
-                         {slot} {!isAvailable ? (isWorking ? '(Occupato)' : '(Fuori orario)') : ''}
+                         {slot} {reason}
                        </option>
                      );
                    })}

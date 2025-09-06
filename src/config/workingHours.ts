@@ -184,3 +184,73 @@ export const getWorkingHoursDescription = (date: Date): string => {
   
   return `Orario: ${workingHours.start} - ${workingHours.end}, ${workingHours.afternoonStart} - ${workingHours.afternoonEnd}`;
 };
+
+// Helper per verificare se una data è nel passato
+export const isDateInPast = (dateString: string): boolean => {
+  const today = new Date();
+  const appointmentDate = new Date(dateString);
+  
+  // Imposta l'ora a 00:00:00 per confrontare solo le date
+  today.setHours(0, 0, 0, 0);
+  appointmentDate.setHours(0, 0, 0, 0);
+  
+  return appointmentDate < today;
+};
+
+// Helper per verificare se un orario è nel passato per la data corrente
+export const isTimeInPast = (time: string, dateString: string): boolean => {
+  const now = new Date();
+  const today = new Date();
+  today.setHours(0, 0, 0, 0);
+  
+  const appointmentDate = new Date(dateString);
+  appointmentDate.setHours(0, 0, 0, 0);
+  
+  // Se la data dell'appuntamento è diversa da oggi, non è nel passato
+  if (appointmentDate.getTime() !== today.getTime()) {
+    return false;
+  }
+  
+  // Se è oggi, controlla se l'orario è nel passato
+  const [hour, minute] = time.split(':').map(Number);
+  const appointmentDateTime = new Date();
+  appointmentDateTime.setHours(hour, minute, 0, 0);
+  
+  return appointmentDateTime < now;
+};
+
+// Helper per verificare se un orario è prenotabile (non nel passato)
+export const isTimeBookable = (time: string, dateString: string): boolean => {
+  // Se la data è nel passato, non è prenotabile
+  if (isDateInPast(dateString)) {
+    return false;
+  }
+  
+  // Se è oggi, verifica che l'orario non sia nel passato
+  if (isTimeInPast(time, dateString)) {
+    return false;
+  }
+  
+  return true;
+};
+
+// Helper per filtrare appuntamenti che sono in orari chiusi
+export const filterAppointmentsInWorkingHours = <T extends { date: string; startTime: string }>(
+  appointments: T[]
+): T[] => {
+  return appointments.filter(appointment => {
+    const appointmentDate = new Date(appointment.date);
+    
+    // Se il giorno non è lavorativo, escludi l'appuntamento
+    if (!isWorkingDay(appointmentDate)) {
+      return false;
+    }
+    
+    // Se l'orario non è lavorativo, escludi l'appuntamento
+    if (!isWorkingHour(appointment.startTime, appointmentDate)) {
+      return false;
+    }
+    
+    return true;
+  });
+};

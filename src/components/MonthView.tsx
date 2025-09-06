@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import type { Appointment, Treatment } from '../types/index';
 import { capitalize, formatDateToISOString } from '../utils/utils';
 import StatusBadge from './StatusBadge';
-import { isWorkingDay } from '../config/workingHours';
+import { isWorkingDay, isWorkingHour, getWorkingHoursDescription, filterAppointmentsInWorkingHours, isDateInPast, isTimeBookable } from '../config/workingHours';
 
 interface MonthViewProps {
   currentDate: Date;
@@ -64,7 +64,9 @@ const MonthView: React.FC<MonthViewProps> = ({
   };
 
   const getAppointmentsForDay = (date: string) => {
-    return appointments.filter(apt => apt.date === date);
+    const dayAppointments = appointments.filter(apt => apt.date === date);
+    // Filtra solo gli appuntamenti che sono in orari lavorativi
+    return filterAppointmentsInWorkingHours(dayAppointments);
   };
 
   const formatDate = (date: Date) => {
@@ -73,6 +75,31 @@ const MonthView: React.FC<MonthViewProps> = ({
 
   const getMonthName = (date: Date) => {
     return date.toLocaleDateString('it-IT', { month: 'long', year: 'numeric' });
+  };
+
+  // Helper per verificare se un giorno è completamente chiuso
+  const isDayCompletelyClosed = (date: Date): boolean => {
+    return !isWorkingDay(date);
+  };
+
+  // Helper per verificare se un giorno ha orari limitati (es. sabato solo mattina)
+  const hasLimitedHours = (date: Date): boolean => {
+    if (!isWorkingDay(date)) return false;
+    const day = date.getDay();
+    return day === 6; // Sabato
+  };
+
+  // Helper per ottenere la descrizione dello stato del giorno
+  const getDayStatus = (date: Date): { status: 'open' | 'limited' | 'closed', description: string } => {
+    if (isDayCompletelyClosed(date)) {
+      return { status: 'closed', description: 'Chiuso' };
+    }
+    
+    if (hasLimitedHours(date)) {
+      return { status: 'limited', description: 'Solo mattina' };
+    }
+    
+    return { status: 'open', description: 'Aperto' };
   };
 
 
@@ -107,13 +134,17 @@ const MonthView: React.FC<MonthViewProps> = ({
             const dayAppointments = getAppointmentsForDay(dateStr);
             const isCurrentMonthDay = isCurrentMonth(day);
             const isTodayDay = isToday(day);
+            const dayStatus = getDayStatus(day);
             const isWorking = isWorkingDay(day);
 
             return (
               <div
                 key={day.toISOString()}
                 className={`min-h-[120px] p-2 ${
-                  !isCurrentMonthDay ? 'bg-gray-50' : 'hover:bg-gray-50'
+                  !isCurrentMonthDay ? 'bg-gray-50' : 
+                  dayStatus.status === 'closed' ? 'bg-gray-100' :
+                  dayStatus.status === 'limited' ? 'bg-amber-50' :
+                  'hover:bg-gray-50'
                 } ${
                   isTodayDay ? 'ring-2 ring-indigo-500 ring-inset' : ''
                 }`}
@@ -125,12 +156,14 @@ const MonthView: React.FC<MonthViewProps> = ({
                       isCurrentMonthDay ? 'text-gray-900' : 'text-gray-400'
                     } ${
                       isTodayDay ? 'text-indigo-600 font-bold' : ''
+                    } ${
+                      dayStatus.status === 'closed' ? 'text-gray-500' : ''
                     }`}
                   >
                     {formatDate(day)}
                   </span>
                   
-                  {isWorking && isCurrentMonthDay && (
+                  {isWorking && isCurrentMonthDay && dayStatus.status !== 'closed' && isTimeBookable('09:00', dateStr) && (
                     <button
                       onClick={() => onAddAppointment(dateStr, '09:00')}
                       className="p-1 text-gray-400 hover:text-indigo-600 hover:bg-indigo-100 rounded text-xs"
@@ -151,10 +184,10 @@ const MonthView: React.FC<MonthViewProps> = ({
                       <div className="text-xs font-medium text-indigo-900 truncate">
                         {appointment.clientName}
                       </div>
-                                              <div className="text-xs text-indigo-700">
-                          {appointment.startTime} • {getTreatmentById(appointment.treatmentId)?.name}
-                        </div>
-                        <StatusBadge status={appointment.status} size="sm" showIcon={false} />
+                      <div className="text-xs text-indigo-700">
+                        {appointment.startTime} • {getTreatmentById(appointment.treatmentId)?.name}
+                      </div>
+                      <StatusBadge status={appointment.status} size="sm" showIcon={false} />
                     </div>
                   ))}
                   
@@ -165,10 +198,14 @@ const MonthView: React.FC<MonthViewProps> = ({
                   )}
                 </div>
 
-                {/* Indicatore se il centro è chiuso */}
-                {!isWorking && (
-                  <div className="text-xs text-gray-400 text-center mt-2">
-                    Chiuso
+                {/* Indicatore dello stato del giorno */}
+                {dayStatus.status !== 'open' && (
+                  <div className={`text-xs text-center mt-2 px-2 py-1 rounded ${
+                    dayStatus.status === 'closed' 
+                      ? 'text-gray-500 bg-gray-200' 
+                      : 'text-amber-700 bg-amber-200'
+                  }`}>
+                    {dayStatus.description}
                   </div>
                 )}
               </div>
@@ -178,7 +215,7 @@ const MonthView: React.FC<MonthViewProps> = ({
       </div>
 
       {/* Legenda */}
-      <div className="flex items-center gap-6 text-sm text-gray-600">
+      <div className="flex flex-wrap items-center gap-4 text-sm text-gray-600">
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-indigo-100 border border-indigo-200 rounded"></div>
           <span>Prenotazione</span>
@@ -186,6 +223,10 @@ const MonthView: React.FC<MonthViewProps> = ({
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 bg-gray-100 border border-gray-200 rounded"></div>
           <span>Centro chiuso</span>
+        </div>
+        <div className="flex items-center gap-2">
+          <div className="w-3 h-3 bg-amber-50 border border-amber-200 rounded"></div>
+          <span>Orari limitati</span>
         </div>
         <div className="flex items-center gap-2">
           <div className="w-3 h-3 ring-2 ring-indigo-500 rounded"></div>
