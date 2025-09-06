@@ -1,206 +1,272 @@
 # Armonia Wellness - Sistema di Gestione Prenotazioni
 
-Un'applicazione web moderna e intuitiva per la gestione delle prenotazioni di un centro benessere, sviluppata con React, TypeScript e Tailwind CSS.
+Un'applicazione web moderna e intuitiva per la gestione completa delle prenotazioni di un centro benessere, sviluppata con React 19, TypeScript e Tailwind CSS.
 
 ## 🚀 Caratteristiche Principali
 
 ### 🔐 Sistema di Autenticazione
-- Login simulato con credenziali admin/admin
-- Interfaccia protetta per lo staff del centro
-- Logout sicuro
+- Login sicuro con credenziali protette (admin/admin)
+- Interfaccia riservata al personale del centro
+- Gestione sessioni utente con logout immediato
 
-### 📅 Gestione Prenotazioni
-- **Vista Giornaliera**: Visualizzazione dettagliata degli appuntamenti per giorno
-- **Vista Settimanale**: Panoramica settimanale con griglia oraria
-- **Vista Mensile**: Calendario mensile con indicatori visivi
+### 📅 Visualizzazioni Multiple
+- **Vista Giornaliera**: Griglia oraria dettagliata con slot da 30 minuti
+- **Vista Settimanale**: Panoramica settimanale completa con navigazione giorni
+- **Vista Mensile**: Calendario mensile con indicatori di occupazione
 
-### ✨ Funzionalità CRUD Complete
-- ✅ **Creazione**: Nuove prenotazioni con validazione dati
-- 📝 **Lettura**: Visualizzazione in tempo reale di tutte le prenotazioni
-- 🔄 **Aggiornamento**: Modifica appuntamenti esistenti
-- 🗑️ **Cancellazione**: Rimozione prenotazioni con conferma
+### ✨ Gestione Prenotazioni Completa (CRUD)
+- ✅ **Creazione**: Nuove prenotazioni con validazione completa dei dati
+- 📝 **Visualizzazione**: Display in tempo reale di tutte le prenotazioni
+- 🔄 **Modifica**: Aggiornamento appuntamenti esistenti
+- 🗑️ **Cancellazione**: Rimozione prenotazioni con conferma di sicurezza
 
-### 🕒 Gestione Orari Intelligente e Configurabile
-- **Sistema centralizzato** per la gestione degli orari lavorativi
-- **Configurazione flessibile** tramite file di impostazioni
-- **Orari predefiniti**: 9:00-13:00 e 14:00-18:00
-- **Giorni lavorativi**: Lunedì-Venerdì (completo), Sabato (mattina), Domenica (chiuso)
-- **Pausa pranzo automatica** dalle 13:00 alle 14:00
-- **Slot orari configurabili** (predefinito: 30 minuti)
-- **Hook personalizzato** `useWorkingHours` per gestione elegante
+### 🕒 Sistema Orari Intelligente
+- **Configurazione centralizzata** tramite file di impostazioni
+- **Orari lavorativi**:
+  - Lunedì-Venerdì: 9:00-13:00 e 14:00-18:00
+  - Sabato: 9:00-13:00 (solo mattina)
+  - Domenica: Chiuso
+- **Pausa pranzo automatica**: 13:00-14:00
+- **Slot configurabili**: Durata 30 minuti (personalizzabile)
+- **Validazione oraria**: Controlli automatici di disponibilità
 
-### 🚫 Prevenzione Sovrapposizioni
-- Controllo automatico della disponibilità
-- Validazione della durata dei trattamenti
-- Prevenzione di appuntamenti sovrapposti
-- Gestione intelligente degli slot temporali
+### 🚫 Prevenzione Conflitti Avanzata
+- Controllo automatico sovrapposizioni temporali
+- Validazione durata trattamenti vs orari disponibili
+- Prevenzione prenotazioni durante pause pranzo
+- Gestione intelligente slot temporali consecutivi
+- Blocco prenotazioni in date/orari passati
 
-### 📱 Design Responsive
-- Interfaccia ottimizzata per dispositivi mobili
-- Layout adattivo per tablet e desktop
-- Navigazione touch-friendly
+### 💼 Gestione Trattamenti
+- **5 Categorie**: Massaggi, Trattamenti Viso, Corpo, Wellness
+- **Trattamenti disponibili**:
+  - Massaggio Rilassante (60 min) - €80
+  - Massaggio Sportivo (45 min) - €70
+  - Trattamento Viso (30 min) - €50
+  - Trattamento Corpo (90 min) - €120
+  - Sauna (45 min) - €40
+- **Durate personalizzabili** per ogni tipo di trattamento
+- **Prezzi dinamici** per categoria
 
-## 🛠️ Tecnologie Utilizzate
+### 👥 Gestione Clienti
+- **Informazioni complete**: Nome, telefono, email obbligatoria
+- **Validazione email** con controllo formato
+- **Note personalizzate** per ogni appuntamento
+- **Status tracking**: Confermato/In attesa
 
-- **Frontend**: React 19 + TypeScript
-- **Styling**: Tailwind CSS 4
-- **Icone**: Lucide React
-- **Build Tool**: Vite
-- **Linting**: ESLint
+### 📊 Dashboard e Statistiche
+- **Contatori in tempo reale**:
+  - Prenotazioni del giorno
+  - Prenotazioni totali
+  - Orario medio utilizzo
+  - Trend settimanale
+- **Indicatori visivi** di stato per ogni prenotazione
+- **Badge colorati** per status (Confermata: verde, In attesa: giallo)
 
-## 📦 Installazione
+### 📱 Design Responsive Completo
+- **Mobile-first**: Ottimizzato per smartphone
+- **Tablet-friendly**: Layout adattivo per dispositivi medi
+- **Desktop**: Interfaccia completa per schermi grandi
+- **Touch**: Navigazione ottimizzata per touch screen
 
-1. **Clona il repository**
-   ```bash
-   git clone <repository-url>
-   cd ArmoniaWellness
-   ```
+### 🔧 Funzionalità Avanzate
+- **Navigazione temporale intelligente**:
+  - Frecce per spostarsi tra giorni/settimane/mesi
+  - Pulsante "Oggi" per ritorno rapido
+  - Indicatori visivi data corrente
+- **Form dinamici** con validazione in tempo reale
+- **Slot disponibilità** con indicatori visivi
+- **Prevenzione errori** con messaggi informativi
+- **Auto-refresh** dati appuntamenti
 
-2. **Installa le dipendenze**
-   ```bash
-   npm install
-   ```
+## 🛠️ Stack Tecnologico
 
-3. **Avvia l'ambiente di sviluppo**
-   ```bash
-   npm run dev
-   ```
+- **Frontend**: React 19 + TypeScript 5.8
+- **Styling**: Tailwind CSS 4 con configurazione personalizzata
+- **Icone**: Lucide React per interfaccia moderna
+- **Build**: Vite 7 per sviluppo e produzione
+- **Linting**: ESLint con regole TypeScript
+- **State Management**: React useState per gestione stato locale
 
-4. **Apri nel browser**
-   Naviga su `http://localhost:5173`
+## 📦 Installazione e Setup
 
-## 🔑 Accesso
+### Prerequisiti
+- Node.js 18+ e npm
+- Git per clonazione repository
+
+### 1. Clonazione Progetto
+```bash
+git clone <repository-url>
+cd ArmoniaWellnessReact
+```
+
+### 2. Installazione Dipendenze
+```bash
+npm install
+```
+
+### 3. Avvio Sviluppo
+```bash
+npm run dev
+```
+L'applicazione sarà disponibile su `http://localhost:5173`
+
+### 4. Build Produzione
+```bash
+npm run build
+```
+
+### 5. Anteprima Build
+```bash
+npm run preview
+```
+
+## 🔑 Credenziali di Accesso
 
 - **Username**: `admin`
 - **Password**: `admin`
 
-## 📋 Struttura del Progetto
+## 📋 Struttura Progetto
 
 ```
 src/
-├── components/          # Componenti React
-│   ├── Logo.tsx        # Logo personalizzabile
-│   ├── Login.tsx       # Form di autenticazione
-│   ├── Navbar.tsx      # Barra di navigazione
-│   ├── Dashboard.tsx   # Dashboard principale
-│   ├── ViewSelector.tsx # Selettore vista (giorno/settimana/mese)
-│   ├── DateNavigator.tsx # Navigazione temporale
-│   ├── AppointmentForm.tsx # Form prenotazioni
-│   ├── DayView.tsx     # Vista giornaliera
-│   ├── WeekView.tsx    # Vista settimanale
-│   └── MonthView.tsx   # Vista mensile
-├── types/              # Definizioni TypeScript
-│   └── index.ts        # Interfacce e tipi
-├── App.tsx             # Componente principale
-├── App.css             # Stili personalizzati
-└── index.css           # Stili globali e Tailwind
+├── components/           # Componenti React riutilizzabili
+│   ├── Login.tsx        # Autenticazione utente
+│   ├── Navbar.tsx       # Barra navigazione
+│   ├── Logo.tsx         # Logo personalizzabile
+│   ├── Dashboard.tsx    # Dashboard principale con statistiche
+│   ├── ViewSelector.tsx # Selettore modalità visualizzazione
+│   ├── DateNavigator.tsx# Navigazione temporale
+│   ├── AppointmentForm.tsx # Form gestione prenotazioni
+│   ├── DayView.tsx      # Vista giornaliera dettagliata
+│   ├── WeekView.tsx     # Vista settimanale
+│   ├── MonthView.tsx    # Vista calendario mensile
+│   ├── StatusBadge.tsx  # Badge stato prenotazioni
+│   └── TimeSlotInfo.tsx # Informazioni slot temporali
+├── config/              # Configurazioni sistema
+│   ├── settings.ts      # Impostazioni centro benessere
+│   └── workingHours.ts  # Logica orari lavorativi
+├── types/               # Definizioni TypeScript
+│   └── index.ts         # Interfacce e tipi applicazione
+├── utils/               # Funzioni utility
+│   └── utils.ts         # Helper per date e stringhe
+├── App.tsx              # Componente principale
+├── main.tsx             # Entry point applicazione
+├── App.css              # Stili componente principale
+└── index.css            # Stili globali e Tailwind
 ```
 
 ## 🎨 Personalizzazione
 
-### Colori
-L'applicazione utilizza una palette di colori personalizzata:
-- **Indigo**: Colore primario per bottoni e elementi principali
-- **Fuchsia**: Colore secondario per accenti
-- **Purple**: Colore per elementi terziari
-
-### Logo
-Il componente `Logo` accetta props per personalizzazione:
-- `variant`: 'color' | 'white'
-- `size`: 'sm' | 'md' | 'lg' | 'xl'
-
-## 📱 Utilizzo
-
-### 1. Accesso
-- Inserisci le credenziali admin/admin
-- Clicca su "Accedi"
-
-### 2. Navigazione
-- **Vista Giorno**: Visualizza gli appuntamenti di un singolo giorno
-- **Vista Settimana**: Panoramica settimanale con griglia oraria
-- **Vista Mese**: Calendario mensile con indicatori
-
-### 3. Gestione Prenotazioni
-- **Nuova**: Clicca su "+" o "Nuova Prenotazione"
-- **Modifica**: Clicca sull'icona di modifica
-- **Elimina**: Clicca sull'icona del cestino
-
-### 4. Navigazione Temporale
-- Usa le frecce per spostarti tra giorni/settimane/mesi
-- Clicca su "Oggi" per tornare alla data corrente
-
-## 🔧 Sviluppo
-
-### Script Disponibili
-- `npm run dev`: Avvia l'ambiente di sviluppo
-- `npm run build`: Compila per la produzione
-- `npm run preview`: Anteprima della build
-- `npm run lint`: Controllo del codice
-
-### Aggiungere Nuovi Trattamenti
-Modifica l'array `sampleTreatments` in `Dashboard.tsx`:
-
-```typescript
-const sampleTreatments: Treatment[] = [
-  {
-    id: '6',
-    name: 'Nuovo Trattamento',
-    duration: 75, // in minuti
-    price: 95,
-    category: 'massage'
-  }
-];
-```
-
-### Configurazione Orari Lavorativi
-Modifica `src/config/settings.ts` per personalizzare orari e impostazioni:
+### Configurazione Orari
+Modifica `src/config/settings.ts` per personalizzare:
+- Orari apertura/chiusura per ogni giorno
+- Durata slot prenotazioni (default: 30 min)
+- Giorni di anticipo massimo prenotazioni
+- Politiche cancellazione
 
 ```typescript
 export const CENTER_SETTINGS = {
-  // ... altre impostazioni
   defaultWorkingHours: {
     monday: { start: '08:00', end: '12:00', afternoonStart: '13:00', afternoonEnd: '19:00' },
-    // ... altri giorni
+    // ... personalizza per ogni giorno
   },
   booking: {
-    slotDuration: 15, // Slot di 15 minuti
-    // ... altre impostazioni
+    slotDuration: 15, // Cambia a slot da 15 minuti
+    maxAdvanceBooking: 60, // Prenotazioni fino a 60 giorni
   }
 };
 ```
 
-Per maggiori dettagli, consulta la [documentazione completa](docs/WORKING_HOURS.md).
+### Aggiunta Trattamenti
+Estendi l'array `sampleTreatments` in `Dashboard.tsx`:
+```typescript
+const newTreatment: Treatment = {
+  id: '6',
+  name: 'Massaggio Californiano',
+  duration: 75,
+  price: 95,
+  category: 'massage'
+};
+```
 
-## 🌟 Funzionalità Avanzate
+### Personalizzazione UI
+- **Logo**: Modifica props `variant` e `size` in `Logo.tsx`
+- **Colori**: Personalizza palette in `tailwind.config.js`
+- **Lingua**: Cambia `language` in `CENTER_SETTINGS`
+
+## 📱 Guida Utilizzo
+
+### Accesso Sistema
+1. Apri applicazione nel browser
+2. Inserisci credenziali: admin/admin
+3. Clicca "Accedi" per accedere alla dashboard
+
+### Gestione Prenotazioni
+1. **Nuova Prenotazione**:
+   - Clicca "+" o "Nuova Prenotazione"
+   - Compila form con dati cliente e trattamento
+   - Seleziona data e orario disponibile
+   - Conferma per salvare
+
+2. **Modifica Prenotazione**:
+   - Clicca icona modifica (matita) sull'appuntamento
+   - Aggiorna dati necessari
+   - Salva modifiche
+
+3. **Cancella Prenotazione**:
+   - Clicca icona cestino
+   - Conferma cancellazione
+
+### Navigazione Viste
+- **Selettore Vista**: Usa pulsanti Giorno/Settimana/Mese
+- **Navigazione Temporale**: Frecce per muoversi tra periodi
+- **Oggi**: Pulsante per ritorno rapido alla data corrente
+
+## 🔧 Script Disponibili
+
+- `npm run dev` - Ambiente sviluppo con hot reload
+- `npm run build` - Build ottimizzata per produzione
+- `npm run preview` - Anteprima build locale
+- `npm run lint` - Verifica codice con ESLint
+
+## 🌟 Funzionalità Tecniche Avanzate
 
 ### Validazione Dati
-- Controllo formato email
-- Validazione campi obbligatori
-- Prevenzione sovrapposizioni orarie
+- **Email**: Controllo formato RFC compliant
+- **Date**: Prevenzione prenotazioni passate
+- **Orari**: Validazione vs orari lavorativi
+- **Sovrapposizioni**: Controllo automatico conflitti
 
 ### Gestione Stato
-- Stato locale React per prenotazioni
-- Aggiornamento in tempo reale
-- Persistenza durante la sessione
+- **Stato locale**: React useState per dati sessione
+- **Aggiornamenti real-time**: Riflesso immediato modifiche
+- **Persistenza sessione**: Dati mantenuti durante navigazione
 
-### Responsive Design
-- Breakpoint mobile-first
-- Layout adattivo per tutti i dispositivi
-- Navigazione ottimizzata per touch
+### Accessibilità
+- **Keyboard navigation**: Navigazione completa da tastiera
+- **Screen reader**: Supporto lettori schermo
+- **Focus management**: Gestione focus per UX ottimale
+- **Color contrast**: Contrasti conformi WCAG
+
+### Performance
+- **Code splitting**: Caricamento componenti ottimizzato
+- **Memoization**: Ottimizzazione re-render React
+- **Bundle optimization**: Build ottimizzata con Vite
 
 ## 📄 Licenza
 
-Questo progetto è sviluppato per scopi educativi e dimostrativi.
+Progetto sviluppato per scopi educativi e dimostrativi nell'ambito del corso Master Web Developer.
 
 ## 🤝 Contributi
 
 Per contribuire al progetto:
 1. Fork del repository
-2. Crea un branch per la feature
-3. Commit delle modifiche
-4. Push al branch
-5. Crea una Pull Request
+2. Crea feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit modifiche (`git commit -m 'Add AmazingFeature'`)
+4. Push al branch (`git push origin feature/AmazingFeature`)
+5. Crea Pull Request
 
 ---
 
-**Armonia Wellness** - Trasforma la gestione delle prenotazioni in un'esperienza digitale elegante e efficiente.
+**Armonia Wellness** - Trasforma la gestione delle prenotazioni del tuo centro benessere in un'esperienza digitale moderna, efficiente e user-friendly.

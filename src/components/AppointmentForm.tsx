@@ -13,8 +13,6 @@ import {
 } from '../config/workingHours';
 import TimeSlotInfo from './TimeSlotInfo';
 
-// Le funzioni isDateInPast, isTimeInPast e isTimeBookable sono ora importate dalla configurazione
-
 interface AppointmentFormProps {
   isOpen: boolean;
   onClose: () => void;

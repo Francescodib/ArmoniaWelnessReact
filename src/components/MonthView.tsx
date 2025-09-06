@@ -3,7 +3,7 @@ import { Plus } from 'lucide-react';
 import type { Appointment, Treatment } from '../types/index';
 import { capitalize, formatDateToISOString } from '../utils/utils';
 import StatusBadge from './StatusBadge';
-import { isWorkingDay, isWorkingHour, getWorkingHoursDescription, filterAppointmentsInWorkingHours, isDateInPast, isTimeBookable } from '../config/workingHours';
+import { isWorkingDay, filterAppointmentsInWorkingHours, isTimeBookable } from '../config/workingHours';
 
 interface MonthViewProps {
   currentDate: Date;

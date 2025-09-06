@@ -12,8 +12,6 @@ import {
   conflictsWithLunchBreak,
   hasAppointmentConflict,
   filterAppointmentsInWorkingHours,
-  isDateInPast,
-  isTimeInPast,
   isTimeBookable
 } from '../config/workingHours';
 
